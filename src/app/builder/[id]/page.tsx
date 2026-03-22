@@ -57,6 +57,7 @@ export default function BuilderPage() {
   }
 
   function handleAddSlide() {
+    if (!project) return;
     const newSlide: SlideConfig = {
       type: "feature-single",
       headline: ["**New** feature"],
