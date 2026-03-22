@@ -44,7 +44,12 @@ export function DropZone({ onFiles, accept = "image/png,image/jpeg", maxFiles = 
         multiple
         accept={accept}
         style={{ display: "none" }}
-        onChange={(e) => e.target.files && handleFiles(e.target.files)}
+        onChange={(e) => {
+          if (e.target.files) {
+            handleFiles(e.target.files);
+            e.target.value = ""; // reset so same file can be selected again
+          }
+        }}
       />
       <div style={{ fontSize: 32, marginBottom: 12 }}>📱</div>
       <p style={{ fontSize: 15, color: "#f5f5f7", fontWeight: 600, marginBottom: 6 }}>

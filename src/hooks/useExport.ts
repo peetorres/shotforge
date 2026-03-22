@@ -1,11 +1,16 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useShotforgeStore } from "@/lib/store";
 
 export function useExport() {
   const { project, isExporting, setIsExporting } = useShotforgeStore();
+  const abortRef = useRef<AbortController | null>(null);
 
   const exportZip = useCallback(async () => {
     if (!project || isExporting) return;
+
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+
     setIsExporting(true);
 
     try {
@@ -24,6 +29,7 @@ export function useExport() {
           },
           sizes: ["6.7", "6.1"],
         }),
+        signal: abortRef.current.signal,
       });
 
       if (!res.ok) {
@@ -39,8 +45,11 @@ export function useExport() {
       a.href = url;
       a.download = `shotforge-${project.brand.toLowerCase().replace(/\s+/g, "-")}.zip`;
       a.click();
-      // Delay revoke — some browsers download asynchronously after click
       setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") {
+        alert("Export failed. Please try again.");
+      }
     } finally {
       setIsExporting(false);
     }

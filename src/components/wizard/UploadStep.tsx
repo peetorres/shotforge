@@ -2,6 +2,15 @@
 import { useState } from "react";
 import { DropZone } from "@/components/ui/DropZone";
 
+const ERROR_MESSAGES: Record<string, string> = {
+  INVALID_TYPE: "Only PNG and JPG files are allowed.",
+  TOO_SMALL: "Screenshot is too small. Minimum 390×844px required.",
+  TOO_LARGE: "File exceeds 10MB limit.",
+  INVALID_IMAGE: "File appears to be corrupted or invalid.",
+  SESSION_TOO_LARGE: "Total upload exceeds 40MB. Remove some files and try again.",
+  NO_FILES: "No files selected.",
+};
+
 interface UploadStepProps {
   sessionId: string;
   onComplete: (filenames: string[]) => void;
@@ -27,7 +36,7 @@ export function UploadStep({ sessionId, onComplete, onBack }: UploadStepProps) {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(`Upload failed: ${data.error} (${data.filename ?? ""})`);
+        setError(ERROR_MESSAGES[data.error] ?? `Upload failed: ${data.error} (${data.filename ?? ""})`);
         return;
       }
 
