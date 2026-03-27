@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shotforge — All Slides + Fixed Right Inspector</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #09090b; --surface: #111113; --surface-2: #1c1c1e; --surface-3: #27272a; --surface-4: #3f3f46;
+    --text: #fafafa; --text-2: #a1a1aa; --text-3: #52525b; --text-4: #71717a;
+    --indigo: #6366f1; --purple: #8b5cf6; --green: #22c55e; --orange: #f59e0b;
+    --red: #ef4444; --pink: #ec4899; --blue: #3b82f6; --cyan: #06b6d4;
+    --font: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; height: 100vh; overflow: hidden; }
+  button { font-family: var(--font); cursor: pointer; border: none; outline: none; }
+  input, textarea, select { font-family: var(--font); outline: none; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface-4); border-radius: 2px; }
+
+  /* ═══ LAYOUT: topbar | (slides | inspector) ════════ */
+  .app { height: 100vh; display: grid; grid-template-rows: 48px 1fr; grid-template-columns: 1fr 272px; overflow: hidden; transition: grid-template-columns 0.3s cubic-bezier(0.16,1,0.3,1); }
+  .app.preview-mode { grid-template-columns: 1fr 0px; }
+  .app.preview-mode .inspector { opacity: 0; pointer-events: none; overflow: hidden; border: none; }
+  .app.preview-mode .slide-card { border-color: transparent !important; transform: none !important; cursor: default; }
+  .app.preview-mode .slide-card.selected { box-shadow: none; }
+
+  /* ─── Top Bar ──────────────────────────────────── */
+  .topbar {
+    grid-column: 1 / -1;
+    background: rgba(17,17,19,0.92); backdrop-filter: blur(24px);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    display: flex; align-items: center; padding: 0 16px; gap: 10px; z-index: 50;
+  }
+  .tb-brand { font-size: 14px; font-weight: 800; background: linear-gradient(135deg, var(--indigo), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .tb-sep { width: 1px; height: 18px; background: rgba(255,255,255,0.06); }
+  .tb-back { height: 28px; padding: 0 10px; border-radius: 7px; background: var(--surface-2); color: var(--text-3); font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 3px; transition: all 0.12s; }
+  .tb-back:hover { background: var(--surface-3); color: var(--text-2); }
+  .tb-tabs { display: flex; gap: 0; background: var(--surface-2); border-radius: 7px; overflow: hidden; border: 1px solid rgba(255,255,255,0.04); }
+  .tb-tab { padding: 5px 14px; font-size: 11px; font-weight: 600; color: var(--text-3); transition: all 0.12s; }
+  .tb-tab.active { background: var(--surface-3); color: var(--text); }
+  .tb-spacer { flex: 1; }
+  .tb-device { height: 28px; padding: 0 10px; border-radius: 7px; background: var(--indigo); color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 4px; }
+  .tb-export { height: 28px; padding: 0 12px; border-radius: 7px; background: var(--green); color: #000; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 4px; transition: all 0.12s; }
+  .tb-export:hover { background: #34d058; }
+  .tb-preview { height: 28px; padding: 0 12px; border-radius: 7px; background: var(--surface-2); border: 1px solid rgba(255,255,255,0.06); color: var(--text-2); font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; transition: all 0.12s; }
+  .tb-preview:hover { background: var(--surface-3); color: var(--text); }
+  .tb-preview.active { background: var(--indigo); color: #fff; border-color: var(--indigo); }
+
+  /* ─── Slides Area (left, scrollable) ───────────── */
+  .slides-area {
+    overflow-x: auto; overflow-y: hidden;
+    display: flex; align-items: center; justify-content: center;
+    gap: 14px; padding: 16px 20px;
+    scroll-snap-type: x proximity; scroll-behavior: smooth;
+  }
+
+  .slide-card {
+    flex-shrink: 0;
+    /* fit 6 slides + gaps + padding in available width */
+    width: calc((100% - 5 * 14px) / 6);
+    min-width: 80px;
+    max-width: 200px;
+    border-radius: 20px; overflow: hidden; position: relative;
+    cursor: pointer; border: 3px solid transparent;
+    transition: all 0.25s var(--ease-out);
+    scroll-snap-align: center;
+    aspect-ratio: 1290 / 2796;
+  }
+  .slide-card:hover { border-color: rgba(255,255,255,0.08); transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+  .slide-card.selected { border-color: var(--indigo); box-shadow: 0 0 0 4px rgba(99,102,241,0.12), 0 16px 48px rgba(99,102,241,0.1); transform: translateY(-4px); }
+
+  .slide-num {
+    position: absolute; top: 10px; left: 10px; z-index: 5;
+    width: 24px; height: 24px; border-radius: 7px;
+    background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+    font-size: 11px; font-weight: 800; color: var(--text-2);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .slide-card.selected .slide-num { background: var(--indigo); color: #fff; }
+
+  .slide-badge {
+    position: absolute; top: 10px; right: 10px; z-index: 5;
+    padding: 3px 8px; border-radius: 5px;
+    font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+    background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); color: var(--text-2);
+  }
+
+  .slide-inner {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 11% 8% 0; position: relative; overflow: hidden;
+  }
+  .slide-inner .si-hl {
+    font-size: clamp(10px, 1.4vw, 16px); font-weight: 800;
+    text-align: center; line-height: 1.15; letter-spacing: -0.3px;
+    margin-bottom: 5%; z-index: 2;
+  }
+  .slide-inner .si-dev {
+    width: 55%; aspect-ratio: 9/19.5;
+    border-radius: clamp(6px, 0.8vw, 12px);
+    overflow: hidden; z-index: 2;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+    border: 1.5px solid rgba(255,255,255,0.06);
+  }
+  .slide-inner .si-dev .mock {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: clamp(12px, 1.5vw, 22px);
+  }
+  .slide-inner .si-glow {
+    position: absolute; width: 130%; height: 60%;
+    bottom: -5%; left: -15%; border-radius: 50%;
+    filter: blur(50px); opacity: 0.18; z-index: 1;
+  }
+
+  /* ─── Inspector (fixed right) ──────────────────── */
+  .inspector {
+    background: var(--surface);
+    border-left: 1px solid rgba(255,255,255,0.06);
+    overflow-y: auto; overflow-x: hidden;
+    display: flex; flex-direction: column;
+  }
+
+  /* Selected slide indicator at top */
+  .ins-selected {
+    padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.04);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .ins-sel-num {
+    width: 26px; height: 26px; border-radius: 7px;
+    background: var(--indigo); color: #fff;
+    font-size: 12px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ins-sel-info { flex: 1; }
+  .ins-sel-type { font-size: 12px; font-weight: 700; }
+  .ins-sel-hint { font-size: 10px; color: var(--text-4); }
+
+  /* Toolbar */
+  .ins-toolbar {
+    display: flex; gap: 3px; padding: 8px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .ins-tool {
+    width: 28px; height: 28px; border-radius: 6px;
+    background: var(--surface-2); color: var(--text-3);
+    font-size: 12px; display: flex; align-items: center; justify-content: center;
+    transition: all 0.1s;
+  }
+  .ins-tool:hover { background: var(--surface-3); color: var(--text-2); }
+  .ins-tool.primary { background: var(--indigo); color: #fff; }
+  .ins-tool.danger { color: var(--red); }
+
+  /* Accordion sections */
+  .ins-section { border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .ins-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; cursor: pointer; transition: all 0.1s;
+  }
+  .ins-header:hover { background: rgba(255,255,255,0.02); }
+  .ins-header-icon { font-size: 13px; width: 18px; text-align: center; }
+  .ins-header-name { font-size: 12px; font-weight: 600; flex: 1; }
+  .ins-header-actions { display: flex; gap: 2px; }
+  .ins-act {
+    width: 24px; height: 24px; border-radius: 5px;
+    background: var(--surface-2); color: var(--text-3);
+    font-size: 10px; display: flex; align-items: center; justify-content: center;
+    transition: all 0.1s;
+  }
+  .ins-act:hover { background: var(--surface-3); color: var(--text-2); }
+  .ins-act.on { background: var(--indigo); color: #fff; }
+  .ins-chev { font-size: 10px; color: var(--text-4); transition: transform 0.2s; }
+  .ins-section.open .ins-chev { transform: rotate(180deg); }
+  .ins-sub { font-size: 9px; color: var(--text-4); padding: 0 14px 6px 40px; }
+
+  .ins-body { padding: 0 14px 12px; display: none; }
+  .ins-section.open .ins-body { display: block; }
+
+  /* Inputs */
+  .ins-label { font-size: 10px; color: var(--text-4); margin-bottom: 4px; display: block; font-weight: 500; }
+  .ins-inp {
+    width: 100%; background: var(--bg);
+    border: 1px solid rgba(255,255,255,0.06); border-radius: 6px;
+    padding: 7px 10px; font-size: 12px; color: var(--text);
+    transition: all 0.1s; margin-bottom: 6px;
+  }
+  .ins-inp:focus { border-color: var(--indigo); }
+  .ins-select {
+    width: 100%; background: var(--bg);
+    border: 1px solid rgba(255,255,255,0.06); border-radius: 6px;
+    padding: 6px 10px; font-size: 11px; color: var(--text); appearance: none;
+    margin-bottom: 6px;
+  }
+
+  .ins-bgs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .ins-bg { aspect-ratio: 1; border-radius: 5px; cursor: pointer; border: 2px solid transparent; transition: all 0.1s; }
+  .ins-bg:hover { transform: scale(1.06); }
+  .ins-bg.active { border-color: #fff; }
+
+  .ins-colors { display: flex; gap: 4px; flex-wrap: wrap; }
+  .ins-c { width: 20px; height: 20px; border-radius: 5px; cursor: pointer; border: 2px solid transparent; transition: all 0.1s; }
+  .ins-c:hover { transform: scale(1.1); }
+  .ins-c.active { border-color: #fff; }
+
+  .ins-slider { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .ins-slider input[type="range"] { flex: 1; accent-color: var(--indigo); height: 2px; }
+  .ins-slider .val { font-size: 9px; color: var(--text-4); min-width: 26px; text-align: right; font-family: 'SF Mono', monospace; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ═══ TOP BAR ════════════════════════════════════ -->
+  <div class="topbar">
+    <div class="tb-brand">Shotforge</div>
+    <div class="tb-sep"></div>
+    <button class="tb-back">← Variants</button>
+    <div class="tb-tabs">
+      <div class="tb-tab">Setup</div>
+      <div class="tb-tab active">Background</div>
+      <div class="tb-tab">Localize</div>
+      <div class="tb-tab">App Screens</div>
+    </div>
+    <div class="tb-spacer"></div>
+    <button class="tb-preview" id="btn-preview" onclick="togglePreview()">👁 Preview</button>
+    <div class="tb-device">iPhone 6.7" ▾</div>
+    <button class="tb-export">⬇ Export</button>
+  </div>
+
+  <!-- ═══ SLIDES (left, scrollable) ══════════════════ -->
+  <div class="slides-area" id="slides-area"></div>
+
+  <!-- ═══ INSPECTOR (fixed right) ════════════════════ -->
+  <div class="inspector" id="inspector"></div>
+</div>
+
+<script>
+const COLORS = ['#6366f1','#3b82f6','#06b6d4','#22c55e','#f59e0b','#ef4444','#ec4899','#8b5cf6'];
+const BGS = [
+  { bg: 'linear-gradient(160deg,#0D0D18,#1a1033)', text: '#fff', mb: '#1c1c1e', mc: '#555' },
+  { bg: 'linear-gradient(160deg,#F5F5F7,#E8E8ED)', text: '#1d1d1f', mb: '#e5e5ea', mc: '#888' },
+  { bg: null, text: '#fff', mb: '#1c1c1e', mc: '#555' },
+  { bg: 'linear-gradient(160deg,#000,#0a0a1a)', text: '#fff', mb: '#111', mc: '#444' },
+  { bg: 'linear-gradient(135deg,#667eea,#764ba2)', text: '#fff', mb: '#2d2060', mc: '#8875c0' },
+  { bg: 'linear-gradient(135deg,#f093fb,#f5576c)', text: '#fff', mb: '#4a1030', mc: '#c06080' },
+  { bg: 'linear-gradient(135deg,#4facfe,#00f2fe)', text: '#fff', mb: '#0a2a4a', mc: '#4090c0' },
+  { bg: 'linear-gradient(135deg,#43e97b,#38f9d7)', text: '#1d1d1f', mb: '#d0f0e0', mc: '#5a9' },
+];
+const HEADLINES = ['Your app,\n**elevated**','**Smart** learning\nmade simple','Track your\n**progress**','AI-powered\n**insights**','Daily\n**challenges**','Join **thousands**\nof learners'];
+const TYPES = ['Hero','Feature','Feature','Feature','Feature','Social'];
+const ICONS = ['📊','🏠','👤','⚡','📱','🎯'];
+
+let st = { sel: 0, color: '#6366f1', bgIdx: 0, sections: { layout: false, bg: true, title: true, device: true } };
+
+function bg() { return BGS[st.bgIdx].bg || `linear-gradient(160deg,${st.color}22,${st.color}55,#0D0D18)`; }
+function hl(t) { return t.replace(/\*\*(.+?)\*\*/g, `<span style="color:${st.color}">$1</span>`).replace(/\n/g,'<br>'); }
+
+// ─── Render Slides ──────────────────────────────
+function renderSlides() {
+  const area = document.getElementById('slides-area');
+  area.innerHTML = '';
+  const b = bg(), tc = BGS[st.bgIdx].text, mb = BGS[st.bgIdx].mb, mc = BGS[st.bgIdx].mc;
+
+  for (let i = 0; i < 6; i++) {
+    const card = document.createElement('div');
+    card.className = `slide-card ${i === st.sel ? 'selected' : ''}`;
+    card.style.background = b;
+    card.onclick = () => { st.sel = i; renderSlides(); renderInspector(); };
+    card.innerHTML = `
+      <div class="slide-num">${i+1}</div>
+      <div class="slide-badge">${TYPES[i]}</div>
+      <div class="slide-inner">
+        <div class="si-hl" style="color:${tc}">${hl(HEADLINES[i])}</div>
+        <div class="si-dev"><div class="mock" style="background:${mb};color:${mc}">${ICONS[i]}</div></div>
+        <div class="si-glow" style="background:${st.color}"></div>
+      </div>
+    `;
+    area.appendChild(card);
+  }
+}
+
+// ─── Render Inspector ───────────────────────────
+function renderInspector() {
+  const el = document.getElementById('inspector');
+  const i = st.sel;
+
+  el.innerHTML = `
+    <!-- Selected slide indicator -->
+    <div class="ins-selected">
+      <div class="ins-sel-num">${i+1}</div>
+      <div class="ins-sel-info">
+        <div class="ins-sel-type">${TYPES[i]}</div>
+        <div class="ins-sel-hint">Editing slide ${i+1} of 6</div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="ins-toolbar">
+      <button class="ins-tool primary" title="Apply">✓</button>
+      <button class="ins-tool" title="Reset">↺</button>
+      <button class="ins-tool" title="Duplicate">❐</button>
+      <button class="ins-tool" title="Copy">⬇</button>
+      <button class="ins-tool" title="Paste">📋</button>
+      <button class="ins-tool" title="Lock">🔒</button>
+      <button class="ins-tool danger" title="Delete">🗑</button>
+    </div>
+
+    <!-- Layout -->
+    <div class="ins-section ${st.sections.layout ? 'open' : ''}" data-key="layout">
+      <div class="ins-header" onclick="toggle('layout')">
+        <span class="ins-header-icon">☰</span>
+        <span class="ins-header-name">Layout</span>
+        <div class="ins-header-actions"><button class="ins-act">+</button></div>
+        <span class="ins-chev">▾</span>
+      </div>
+      <div class="ins-body">
+        <select class="ins-select">
+          <option ${TYPES[i]==='Hero'?'selected':''}>Hero — Title + Device</option>
+          <option ${TYPES[i]==='Feature'?'selected':''}>Feature — Headline + Device</option>
+          <option>Dual — Headline + 2 Devices</option>
+          <option>Stats — Numbers + Device</option>
+          <option ${TYPES[i]==='Social'?'selected':''}>Social Proof — Reviews</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Background -->
+    <div class="ins-section ${st.sections.bg ? 'open' : ''}" data-key="bg">
+      <div class="ins-header" onclick="toggle('bg')">
+        <span class="ins-header-icon">🖼</span>
+        <span class="ins-header-name">Background</span>
+        <span class="ins-chev">▾</span>
+      </div>
+      <div class="ins-body">
+        <div class="ins-bgs" id="bgs-grid"></div>
+      </div>
+    </div>
+
+    <!-- Title -->
+    <div class="ins-section ${st.sections.title ? 'open' : ''}" data-key="title">
+      <div class="ins-header" onclick="toggle('title')">
+        <span class="ins-header-icon">Tt</span>
+        <span class="ins-header-name">Title</span>
+        <div class="ins-header-actions">
+          <button class="ins-act">+</button>
+          <button class="ins-act">◑</button>
+          <button class="ins-act on">⊡</button>
+          <button class="ins-act">✥</button>
+        </div>
+        <span class="ins-chev">▾</span>
+      </div>
+      <div class="ins-sub">slide ${i+1}</div>
+      <div class="ins-body">
+        <textarea class="ins-inp" rows="2" style="resize:none">${HEADLINES[i].replace(/\*\*/g,'')}</textarea>
+        <span class="ins-label">Font</span>
+        <select class="ins-select">
+          <option>SF Pro Display</option><option selected>Inter</option><option>Poppins</option><option>Montserrat</option><option>Space Grotesk</option>
+        </select>
+        <span class="ins-label">Size</span>
+        <div class="ins-slider"><input type="range" min="40" max="100" value="68" oninput="this.nextElementSibling.textContent=this.value" /><span class="val">68</span></div>
+        <span class="ins-label">Accent Color</span>
+        <div class="ins-colors" id="colors-grid"></div>
+      </div>
+    </div>
+
+    <!-- Device -->
+    <div class="ins-section ${st.sections.device ? 'open' : ''}" data-key="device">
+      <div class="ins-header" onclick="toggle('device')">
+        <span class="ins-header-icon">📱</span>
+        <span class="ins-header-name">Device</span>
+        <div class="ins-header-actions">
+          <button class="ins-act">+</button>
+          <button class="ins-act">◑</button>
+          <button class="ins-act on">⊡</button>
+          <button class="ins-act">✥</button>
+        </div>
+        <span class="ins-chev">▾</span>
+      </div>
+      <div class="ins-sub">layer 1</div>
+      <div class="ins-body">
+        <span class="ins-label">Screenshot</span>
+        <select class="ins-select">
+          ${ICONS.map((ic,idx) => `<option ${idx===i?'selected':''}>Screen ${idx+1} — ${TYPES[idx]}</option>`).join('')}
+        </select>
+        <span class="ins-label">Rotation</span>
+        <div class="ins-slider"><input type="range" min="-20" max="20" value="0" oninput="this.nextElementSibling.textContent=this.value+'°'" /><span class="val">0°</span></div>
+        <span class="ins-label">Scale</span>
+        <div class="ins-slider"><input type="range" min="50" max="130" value="100" oninput="this.nextElementSibling.textContent=this.value+'%'" /><span class="val">100%</span></div>
+        <span class="ins-label">Y Position</span>
+        <div class="ins-slider"><input type="range" min="-30" max="30" value="0" oninput="this.nextElementSibling.textContent=this.value" /><span class="val">0</span></div>
+      </div>
+    </div>
+  `;
+
+  // Backgrounds
+  const bgsGrid = document.getElementById('bgs-grid');
+  BGS.forEach((b, bi) => {
+    const d = document.createElement('div');
+    d.className = `ins-bg ${bi===st.bgIdx?'active':''}`;
+    d.style.background = b.bg || `linear-gradient(160deg,${st.color}33,${st.color}66,#0D0D18)`;
+    d.onclick = () => { st.bgIdx = bi; renderSlides(); renderInspector(); };
+    bgsGrid.appendChild(d);
+  });
+
+  // Colors
+  const colorsGrid = document.getElementById('colors-grid');
+  COLORS.forEach(c => {
+    const d = document.createElement('div');
+    d.className = `ins-c ${c===st.color?'active':''}`;
+    d.style.background = c;
+    d.onclick = () => { st.color = c; renderSlides(); renderInspector(); };
+    colorsGrid.appendChild(d);
+  });
+}
+
+function toggle(key) { st.sections[key] = !st.sections[key]; renderInspector(); }
+
+function togglePreview() {
+  const app = document.querySelector('.app');
+  const btn = document.getElementById('btn-preview');
+  const isPreview = app.classList.toggle('preview-mode');
+  btn.classList.toggle('active', isPreview);
+  btn.innerHTML = isPreview ? '✎ Edit' : '👁 Preview';
+}
+
+// Init
+renderSlides();
+renderInspector();
+</script>
+</body>
+</html>

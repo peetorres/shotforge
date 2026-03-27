@@ -1,61 +1,127 @@
-import Link from "next/link";
+"use client";
 
-export default function LandingPage() {
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { nanoid } from "nanoid";
+import { NavBar } from "@/components/shared/nav-bar";
+import { CreateForm, type CreateFormData } from "@/components/create/create-form";
+
+export default function CreatePage() {
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(data: CreateFormData) {
+    setIsSubmitting(true);
+    setError(null);
+
+    const sessionId = nanoid();
+
+    // Upload files
+    const formData = new FormData();
+    formData.append("sessionId", sessionId);
+    data.files.forEach((f) => formData.append("files", f));
+
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const result = await res.json();
+
+      if (!res.ok) {
+        const msg = result.filename
+          ? `${result.error}: ${result.filename}`
+          : (result.detail ?? result.error ?? "Upload failed");
+        setError(msg);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Store session data in localStorage for the generate page to pick up
+      const sessionData = {
+        sessionId,
+        brand: data.brand,
+        description: data.description,
+        brandColor: data.brandColor,
+        filenames: result.filenames as string[],
+      };
+      localStorage.setItem("shotforge-pending", JSON.stringify(sessionData));
+
+      router.push(`/generate/${sessionId}`);
+    } catch {
+      setError("Upload failed. Please try again.");
+      setIsSubmitting(false);
+    }
+  }
+
   return (
-    <main style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center" }}>
+    <>
+      <NavBar currentStep="create" />
 
-      {/* Logo */}
-      <div style={{ fontSize: 14, fontWeight: 700, color: "#f5f5f7", letterSpacing: "-0.3px", marginBottom: 48, display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#0A84FF", display: "inline-block" }} />
-        Shotforge
-      </div>
-
-      {/* Headline */}
-      <h1 style={{ fontSize: "clamp(36px, 6vw, 72px)", fontWeight: 800, color: "#f5f5f7", letterSpacing: "-2px", lineHeight: 1.1, marginBottom: 20, maxWidth: 700 }}>
-        App Store screenshots<br />
-        <span style={{ color: "#0A84FF" }}>in 4 steps.</span>
-      </h1>
-
-      <p style={{ fontSize: "clamp(15px, 2vw, 18px)", color: "#98989d", marginBottom: 48, letterSpacing: "0.5px" }}>
-        Upload.&nbsp;&nbsp;Style.&nbsp;&nbsp;Copy.&nbsp;&nbsp;Export.
-      </p>
-
-      {/* CTA */}
-      <Link
-        href="/new"
+      <main
         style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          height: 52,
-          padding: "0 32px",
-          background: "#0A84FF",
-          color: "#fff",
-          borderRadius: 14,
-          fontSize: 16,
-          fontWeight: 700,
-          textDecoration: "none",
-          letterSpacing: "-0.2px",
-          transition: "all 0.15s",
-          boxShadow: "0 8px 32px rgba(10,132,255,0.3)",
+          minHeight: "100vh", paddingTop: 48,
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center",
+          padding: "80px 24px",
         }}
       >
-        Start for free
-        <span style={{ fontSize: 18 }}>→</span>
-      </Link>
+        {/* Badge */}
+        <div
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "5px 14px",
+            background: "linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.12))",
+            border: "1px solid rgba(99,102,241,0.2)",
+            borderRadius: "var(--r-pill)",
+            fontSize: 12, fontWeight: 600, color: "var(--indigo)",
+            marginBottom: 20,
+            animation: "fade-up 0.5s var(--ease) both",
+          }}
+        >
+          <span style={{ animation: "breathe 2s ease infinite" }}>✦</span> AI-Powered
+        </div>
 
-      <p style={{ fontSize: 12, color: "#48484a", marginTop: 16 }}>
-        No account needed. Session saved locally.
-      </p>
+        {/* Title */}
+        <h1
+          style={{
+            fontSize: "clamp(32px, 5vw, 56px)", fontWeight: 900,
+            textAlign: "center", letterSpacing: -2, lineHeight: 1.05,
+            marginBottom: 10,
+            animation: "fade-up 0.5s var(--ease) 0.08s both",
+          }}
+        >
+          App Store screenshots
+          <br />
+          <span
+            style={{
+              background: "linear-gradient(135deg, var(--indigo), var(--purple), var(--pink))",
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+            }}
+          >
+            in one click
+          </span>
+        </h1>
 
-      {/* Feature pills */}
-      <div style={{ display: "flex", gap: 10, marginTop: 64, flexWrap: "wrap", justifyContent: "center" }}>
-        {["Hero slides", "Feature slides", "AI copy", "3 styles", "6.7\" + 6.1\"", "ZIP export"].map((f) => (
-          <div key={f} style={{ background: "#161618", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "6px 14px", fontSize: 12, color: "#98989d", fontWeight: 500 }}>
-            {f}
-          </div>
-        ))}
-      </div>
-    </main>
+        {/* Subtitle */}
+        <p
+          style={{
+            fontSize: "clamp(14px, 2vw, 17px)", color: "var(--text-2)",
+            textAlign: "center", maxWidth: 480, lineHeight: 1.5, marginBottom: 40,
+            animation: "fade-up 0.5s var(--ease) 0.16s both",
+          }}
+        >
+          Describe your app, drop your screens, pick a color. AI generates 3 complete sets — you choose and refine.
+        </p>
+
+        {/* Form */}
+        <div style={{ animation: "fade-up 0.5s var(--ease) 0.24s both" }}>
+          <CreateForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+        </div>
+
+        {/* Error */}
+        {error && (
+          <p style={{ color: "var(--red)", fontSize: 13, marginTop: 16 }}>{error}</p>
+        )}
+      </main>
+    </>
   );
 }

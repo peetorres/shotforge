@@ -1,11 +1,17 @@
+/**
+ * POST /api/generate-copy
+ *
+ * Canonical: API_CONTRACTS.md, RULE-G04, RULE-G06
+ * RG-010: Returns 200 with fallback copy when AI unavailable — NEVER blocks user
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { generateText } from "ai";
-import type { GenerateCopyRequest, GeneratedCopy } from "@/lib/types";
+import { getTemplateCopy } from "@/lib/copy-templates";
+import type { GenerateCopyRequest, GeneratedCopy, AppStyle } from "@/domain/types";
 
 export const runtime = "nodejs";
-
-const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 function buildPrompt(req: GenerateCopyRequest): string {
   const screenHint = req.screenshotFilename
@@ -21,7 +27,7 @@ function buildPrompt(req: GenerateCopyRequest): string {
 App name: ${req.brand}
 App description: ${req.description}
 Slide type: ${req.slideType}
-Visual style: ${req.style}
+Visual style: ${req.style} (variant: ${req.variantName})
 
 ${fieldGuide}
 
@@ -34,26 +40,32 @@ Rules:
 
 export async function POST(req: NextRequest) {
   let body: GenerateCopyRequest;
-  try { body = await req.json(); } catch { return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 }); }
-
-  let text: string;
   try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
+  }
+
+  const slideType = body.slideType as "hero" | "feature-single" | "feature-dual";
+  const style = (body.style || "dark") as AppStyle;
+
+  // Attempt AI generation
+  try {
+    const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const result = await generateText({
       model: anthropic("claude-haiku-4-5-20251001"),
       prompt: buildPrompt(body),
       maxTokens: 256,
     });
-    text = result.text;
-  } catch (error) {
-    console.error("[generate-copy] AI call failed:", error);
-    return NextResponse.json({ error: "AI_UNAVAILABLE" }, { status: 503 });
-  }
 
-  try {
-    const copy = JSON.parse(text) as GeneratedCopy;
-    return NextResponse.json(copy);
-  } catch (error) {
-    console.error("[generate-copy] JSON parse failed, raw text:", text);
-    return NextResponse.json({ error: "AI_UNAVAILABLE" }, { status: 503 });
+    const parsed = JSON.parse(result.text) as Omit<GeneratedCopy, "contentOrigin">;
+    return NextResponse.json({
+      ...parsed,
+      contentOrigin: "generated_by_ai",
+    });
+  } catch {
+    // RULE-G06, RG-010: Fallback — return template copy, HTTP 200
+    const fallback = getTemplateCopy(slideType, style);
+    return NextResponse.json(fallback);
   }
 }

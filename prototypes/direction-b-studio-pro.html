@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shotforge — Direction B: Studio Pro</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0a; --surface: #141416; --surface-2: #1c1c1e; --surface-3: #2c2c2e;
+    --text: #f5f5f7; --text-2: #98989d; --text-3: #48484a;
+    --blue: #0A84FF; --green: #30D158; --orange: #FF9F0A;
+    --purple: #BF5AF2; --red: #FF453A; --pink: #FF375F;
+    --radius: 12px; --radius-sm: 8px;
+    --font: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+    --transition: all 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; -webkit-font-smoothing: antialiased; }
+  button { font-family: var(--font); cursor: pointer; border: none; outline: none; }
+  input, textarea, select { font-family: var(--font); outline: none; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 2px; }
+
+  /* ─── App Shell: 3-Column Layout ───────────────── */
+  .app { display: grid; grid-template-rows: 48px 1fr; grid-template-columns: 220px 1fr 300px; height: 100vh; }
+  .app.onboarding { grid-template-columns: 1fr; }
+
+  /* ─── Top Bar ──────────────────────────────────── */
+  .topbar { grid-column: 1 / -1; background: rgba(20,20,22,0.95); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; padding: 0 16px; gap: 12px; z-index: 10; }
+  .topbar-brand { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .topbar-brand .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--blue); }
+  .topbar-project { background: var(--surface-2); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 4px 10px; font-size: 13px; color: var(--text-2); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar-center { flex: 1; display: flex; justify-content: center; gap: 2px; }
+  .topbar-tab { padding: 6px 14px; font-size: 12px; font-weight: 500; color: var(--text-3); border-radius: 6px; transition: var(--transition); }
+  .topbar-tab:hover { color: var(--text-2); }
+  .topbar-tab.active { background: var(--surface-2); color: var(--text); }
+  .topbar-actions { display: flex; gap: 8px; }
+  .topbar-btn { height: 30px; padding: 0 14px; border-radius: 7px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 5px; transition: var(--transition); }
+  .topbar-btn.secondary { background: var(--surface-2); color: var(--text-2); }
+  .topbar-btn.secondary:hover { background: var(--surface-3); color: var(--text); }
+  .topbar-btn.primary { background: var(--blue); color: #fff; }
+  .topbar-btn.primary:hover { background: #1A8FFF; }
+  .topbar-btn.export { background: var(--green); color: #000; font-weight: 700; }
+
+  /* ─── Left Panel: Slides ───────────────────────── */
+  .panel-left { background: var(--surface); border-right: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; overflow: hidden; }
+  .panel-header { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: space-between; }
+  .panel-title { font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; }
+  .panel-count { font-size: 11px; color: var(--text-3); }
+  .slides-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+
+  .slide-item { background: var(--surface-2); border: 1.5px solid transparent; border-radius: 10px; padding: 8px; cursor: pointer; transition: var(--transition); display: flex; gap: 10px; align-items: flex-start; position: relative; }
+  .slide-item:hover { background: var(--surface-3); }
+  .slide-item.active { border-color: var(--blue); background: rgba(10,132,255,0.06); }
+  .slide-thumb { width: 48px; aspect-ratio: 9/19.5; border-radius: 5px; overflow: hidden; flex-shrink: 0; position: relative; }
+  .slide-thumb-inner { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-3); }
+  .slide-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .slide-info { flex: 1; min-width: 0; padding-top: 2px; }
+  .slide-type { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 5px; border-radius: 3px; display: inline-block; margin-bottom: 4px; }
+  .slide-type.hero { background: rgba(10,132,255,0.15); color: var(--blue); }
+  .slide-type.feature { background: rgba(48,209,88,0.15); color: var(--green); }
+  .slide-type.social { background: rgba(191,90,242,0.15); color: var(--purple); }
+  .slide-label { font-size: 11px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .slide-drag { position: absolute; left: 2px; top: 50%; transform: translateY(-50%); width: 6px; display: flex; flex-direction: column; gap: 2px; opacity: 0; transition: var(--transition); }
+  .slide-item:hover .slide-drag { opacity: 0.4; }
+  .slide-drag span { width: 6px; height: 2px; background: var(--text-3); border-radius: 1px; }
+
+  .add-slide-btn { margin: 0 8px 8px; height: 34px; border: 1.5px dashed rgba(255,255,255,0.1); border-radius: 8px; background: none; color: var(--text-3); font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 5px; transition: var(--transition); }
+  .add-slide-btn:hover { border-color: var(--blue); color: var(--blue); background: rgba(10,132,255,0.04); }
+
+  /* ─── Center: Canvas ───────────────────────────── */
+  .panel-center { display: flex; flex-direction: column; overflow: hidden; position: relative; }
+  .canvas-header { padding: 8px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: space-between; background: rgba(10,10,10,0.5); }
+  .canvas-device-info { font-size: 11px; color: var(--text-3); display: flex; align-items: center; gap: 8px; }
+  .canvas-device-info .live { display: flex; align-items: center; gap: 5px; }
+  .canvas-device-info .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .canvas-zoom { display: flex; gap: 4px; align-items: center; }
+  .canvas-zoom button { width: 28px; height: 28px; background: var(--surface-2); border-radius: 6px; color: var(--text-3); font-size: 14px; display: flex; align-items: center; justify-content: center; transition: var(--transition); }
+  .canvas-zoom button:hover { background: var(--surface-3); color: var(--text); }
+  .canvas-zoom span { font-size: 11px; color: var(--text-3); min-width: 36px; text-align: center; }
+
+  .canvas-area { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; background: radial-gradient(ellipse at center, rgba(255,255,255,0.02) 0%, transparent 70%); }
+  .canvas-frame { height: 85%; max-height: 680px; aspect-ratio: 1290/2796; border-radius: 32px; position: relative; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 40px 120px rgba(0,0,0,0.6); transition: var(--transition); }
+
+  .canvas-nav { padding: 10px 0 14px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .canvas-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--surface-3); cursor: pointer; transition: var(--transition); }
+  .canvas-dot.active { width: 20px; border-radius: 3px; background: var(--blue); }
+  .canvas-counter { font-size: 11px; color: var(--text-3); margin-left: 10px; font-weight: 500; }
+
+  /* ─── Right Panel: Inspector ───────────────────── */
+  .panel-right { background: var(--surface); border-left: 1px solid rgba(255,255,255,0.06); overflow-y: auto; }
+  .inspector-section { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .inspector-title { font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+  .inspector-title .ai-badge { font-size: 10px; padding: 2px 6px; background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2)); border: 1px solid rgba(99,102,241,0.3); border-radius: 4px; color: #818cf8; font-weight: 600; letter-spacing: 0; text-transform: none; cursor: pointer; }
+
+  .layout-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .layout-option { aspect-ratio: 9/19.5; background: var(--surface-2); border: 1.5px solid transparent; border-radius: 6px; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 2px; }
+  .layout-option:hover { background: var(--surface-3); }
+  .layout-option.active { border-color: var(--blue); }
+  .layout-option .lo-icon { font-size: 12px; }
+  .layout-option .lo-label { font-size: 8px; color: var(--text-3); font-weight: 600; }
+
+  .inp { width: 100%; background: var(--surface-2); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 13px; color: var(--text); transition: var(--transition); margin-bottom: 8px; }
+  .inp:focus { border-color: var(--blue); }
+  .inp-label { font-size: 11px; color: var(--text-3); margin-bottom: 5px; display: block; font-weight: 500; }
+
+  .bg-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .bg-preset { aspect-ratio: 1; border-radius: var(--radius-sm); cursor: pointer; border: 2px solid transparent; transition: var(--transition); }
+  .bg-preset:hover { transform: scale(1.05); }
+  .bg-preset.active { border-color: #fff; }
+
+  .font-select { width: 100%; background: var(--surface-2); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 13px; color: var(--text); appearance: none; }
+
+  .color-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .color-dot { width: 28px; height: 28px; border-radius: 7px; cursor: pointer; border: 2px solid transparent; transition: var(--transition); }
+  .color-dot:hover { transform: scale(1.1); }
+  .color-dot.active { border-color: #fff; }
+
+  .slider-row { display: flex; align-items: center; gap: 8px; }
+  .slider-row input[type="range"] { flex: 1; accent-color: var(--blue); }
+  .slider-row .val { font-size: 11px; color: var(--text-3); min-width: 32px; text-align: right; font-family: monospace; }
+
+  /* ─── Onboarding Overlay ───────────────────────── */
+  .onboard-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; }
+  .onboard-overlay.hidden { display: none; }
+  .onboard-card { max-width: 580px; width: 100%; }
+  .onboard-card h1 { font-size: clamp(32px, 5vw, 48px); font-weight: 800; letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 8px; }
+  .onboard-card h1 span { background: linear-gradient(135deg, var(--blue), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .onboard-card .sub { color: var(--text-2); font-size: 17px; margin-bottom: 48px; line-height: 1.5; }
+  .onboard-field { margin-bottom: 20px; }
+  .onboard-field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .onboard-field input, .onboard-field textarea { width: 100%; background: var(--surface); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px 16px; font-size: 16px; color: var(--text); transition: var(--transition); }
+  .onboard-field input:focus, .onboard-field textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(10,132,255,0.12); }
+  .onboard-field textarea { resize: none; line-height: 1.5; }
+
+  .onboard-dropzone { border: 2px dashed rgba(255,255,255,0.1); border-radius: 16px; padding: 32px; text-align: center; cursor: pointer; transition: var(--transition); margin-bottom: 16px; }
+  .onboard-dropzone:hover { border-color: var(--blue); background: rgba(10,132,255,0.03); }
+  .onboard-thumbs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 24px; }
+  .onboard-thumb { aspect-ratio: 9/19.5; background: var(--surface); border-radius: 8px; overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.06); }
+  .onboard-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .onboard-thumb .n { position: absolute; bottom: 4px; left: 4px; font-size: 9px; font-weight: 700; background: rgba(0,0,0,0.6); padding: 1px 4px; border-radius: 3px; color: var(--text-2); }
+
+  .onboard-colors { display: flex; gap: 10px; margin-bottom: 32px; flex-wrap: wrap; }
+  .onboard-color { width: 44px; height: 44px; border-radius: 12px; cursor: pointer; border: 2.5px solid transparent; transition: var(--transition); }
+  .onboard-color:hover { transform: scale(1.08); }
+  .onboard-color.active { border-color: #fff; box-shadow: 0 0 16px rgba(255,255,255,0.1); }
+
+  .btn-start { width: 100%; height: 56px; background: var(--blue); color: #fff; border-radius: 14px; font-size: 16px; font-weight: 700; transition: var(--transition); box-shadow: 0 8px 32px rgba(10,132,255,0.25); display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-start:hover { background: #1A8FFF; transform: translateY(-1px); }
+  .btn-start:disabled { background: var(--surface); color: var(--text-3); cursor: not-allowed; box-shadow: none; transform: none; }
+
+  /* ─── Simulated Slide Content ──────────────────── */
+  .sim-content { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; padding: 14% 10% 0; position: relative; overflow: hidden; }
+  .sim-content .tagline { font-size: 18px; font-weight: 800; text-align: center; line-height: 1.15; letter-spacing: -0.5px; margin-bottom: 8%; z-index: 2; }
+  .sim-content .phone-mock { width: 58%; aspect-ratio: 9/19.5; border-radius: 14px; overflow: hidden; z-index: 2; box-shadow: 0 8px 40px rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.08); }
+  .sim-content .phone-mock img { width: 100%; height: 100%; object-fit: cover; }
+  .sim-content .glow-bg { position: absolute; width: 140%; height: 70%; bottom: -10%; left: -20%; border-radius: 50%; filter: blur(60px); opacity: 0.25; z-index: 1; }
+
+  /* ─── Variant Chooser (modal style) ────────────── */
+  .variant-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(20px); z-index: 300; display: flex; flex-direction: column; align-items: center; padding: 60px 24px 40px; overflow-y: auto; }
+  .variant-modal.hidden { display: none; }
+  .variant-modal h2 { font-size: 28px; font-weight: 800; margin-bottom: 6px; }
+  .variant-modal .sub { color: var(--text-2); font-size: 15px; margin-bottom: 32px; }
+  .variant-row { display: flex; gap: 20px; max-width: 1100px; width: 100%; margin-bottom: 32px; }
+  .variant-option { flex: 1; background: var(--surface); border-radius: 16px; padding: 20px; border: 2px solid transparent; cursor: pointer; transition: var(--transition); }
+  .variant-option:hover { border-color: rgba(255,255,255,0.1); }
+  .variant-option.selected { border-color: var(--blue); box-shadow: 0 0 0 4px rgba(10,132,255,0.15); }
+  .variant-option .v-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .variant-option .v-desc { font-size: 12px; color: var(--text-3); margin-bottom: 12px; }
+  .variant-strips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+  .variant-mini { width: 60px; aspect-ratio: 9/19.5; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+  .variant-select-btn { margin-top: 12px; width: 100%; height: 36px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+  .variant-option:not(.selected) .variant-select-btn { background: var(--surface-3); color: var(--text-2); }
+  .variant-option.selected .variant-select-btn { background: var(--blue); color: #fff; }
+</style>
+</head>
+<body>
+
+<!-- ─── Onboarding Overlay ───────────────────────── -->
+<div class="onboard-overlay" id="onboard">
+  <div class="onboard-card">
+    <h1>Build App Store<br>screenshots <span>like a pro</span></h1>
+    <p class="sub">Upload your screens, describe your app, and get a professional screenshot set in minutes. Studio-grade quality, zero design skills needed.</p>
+
+    <div class="onboard-field">
+      <label>App Name *</label>
+      <input id="ob-name" type="text" placeholder="e.g. Sensei" />
+    </div>
+
+    <div class="onboard-field">
+      <label>Description</label>
+      <textarea id="ob-desc" rows="2" placeholder="Gamified learning for indie founders with daily challenges and AI paths"></textarea>
+    </div>
+
+    <div class="onboard-field">
+      <label>Upload Screenshots (up to 6)</label>
+      <div class="onboard-dropzone" id="ob-dropzone" onclick="document.getElementById('ob-file-input').click()">
+        <div style="font-size:32px; margin-bottom:8px; opacity:0.5">📱</div>
+        <p style="font-size:14px; font-weight:600; margin-bottom:2px">Drop screenshots here</p>
+        <p style="font-size:12px; color:var(--text-3)">PNG/JPG · up to 6 files</p>
+        <input type="file" id="ob-file-input" multiple accept="image/png,image/jpeg" style="display:none" />
+      </div>
+      <div class="onboard-thumbs" id="ob-thumbs"></div>
+    </div>
+
+    <div class="onboard-field">
+      <label>Brand Color</label>
+      <div class="onboard-colors" id="ob-colors">
+        <div class="onboard-color active" style="background:#6366F1" data-color="#6366F1"></div>
+        <div class="onboard-color" style="background:#0A84FF" data-color="#0A84FF"></div>
+        <div class="onboard-color" style="background:#30D158" data-color="#30D158"></div>
+        <div class="onboard-color" style="background:#FF9F0A" data-color="#FF9F0A"></div>
+        <div class="onboard-color" style="background:#BF5AF2" data-color="#BF5AF2"></div>
+        <div class="onboard-color" style="background:#FF453A" data-color="#FF453A"></div>
+        <div class="onboard-color" style="background:#FF375F" data-color="#FF375F"></div>
+        <div class="onboard-color" style="background:#64D2FF" data-color="#64D2FF"></div>
+      </div>
+    </div>
+
+    <button class="btn-start" id="ob-start" disabled>
+      Open in Studio →
+    </button>
+  </div>
+</div>
+
+<!-- ─── App Shell ────────────────────────────────── -->
+<div class="app" id="app-shell" style="display:none">
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="topbar-brand"><span class="dot"></span> Shotforge</div>
+    <div class="topbar-project" id="tb-project">Untitled</div>
+    <div class="topbar-center">
+      <button class="topbar-tab active">Builder</button>
+      <button class="topbar-tab" onclick="showVariantChooser()">All Variants</button>
+    </div>
+    <div class="topbar-actions">
+      <button class="topbar-btn secondary" onclick="showVariantChooser()">⟳ Regenerate</button>
+      <button class="topbar-btn export" onclick="alert('Prototype: would export ZIP with 6 slides × 4 sizes = 24 PNGs')">⬇ Export</button>
+    </div>
+  </div>
+
+  <!-- Left: Slides Panel -->
+  <div class="panel-left">
+    <div class="panel-header">
+      <span class="panel-title">Slides</span>
+      <span class="panel-count" id="slide-count">0</span>
+    </div>
+    <div class="slides-list" id="slides-list"></div>
+    <button class="add-slide-btn">+ Add Slide</button>
+  </div>
+
+  <!-- Center: Canvas -->
+  <div class="panel-center">
+    <div class="canvas-header">
+      <div class="canvas-device-info">
+        <span>iPhone 15 Pro Max · 6.7"</span>
+        <span class="live"><span class="live-dot"></span> Live Preview</span>
+      </div>
+      <div class="canvas-zoom">
+        <button>−</button>
+        <span>100%</span>
+        <button>+</button>
+      </div>
+    </div>
+    <div class="canvas-area">
+      <div class="canvas-frame" id="canvas-frame">
+        <!-- Rendered slide goes here -->
+      </div>
+    </div>
+    <div class="canvas-nav" id="canvas-nav"></div>
+  </div>
+
+  <!-- Right: Inspector -->
+  <div class="panel-right">
+    <div class="inspector-section">
+      <div class="inspector-title">Layout</div>
+      <div class="layout-grid">
+        <div class="layout-option active"><div class="lo-icon">🏆</div><div class="lo-label">Hero</div></div>
+        <div class="layout-option"><div class="lo-icon">📱</div><div class="lo-label">Feature</div></div>
+        <div class="layout-option"><div class="lo-icon">📱📱</div><div class="lo-label">Dual</div></div>
+        <div class="layout-option"><div class="lo-icon">📊</div><div class="lo-label">Stats</div></div>
+      </div>
+    </div>
+
+    <div class="inspector-section">
+      <div class="inspector-title">
+        Copy
+        <span class="ai-badge">✦ AI Generate</span>
+      </div>
+      <span class="inp-label">Headline</span>
+      <textarea class="inp" rows="2" id="inp-headline" placeholder="Your app, **elevated**"></textarea>
+      <span class="inp-label">Subtitle</span>
+      <input class="inp" id="inp-subtitle" placeholder="Optional subtitle" />
+    </div>
+
+    <div class="inspector-section">
+      <div class="inspector-title">Background</div>
+      <div class="bg-presets" id="bg-presets">
+        <div class="bg-preset active" style="background:linear-gradient(160deg,#0D0D18,#1a1033)" data-bg="dark"></div>
+        <div class="bg-preset" style="background:linear-gradient(160deg,#F5F5F7,#E8E8ED)" data-bg="light"></div>
+        <div class="bg-preset" style="background:linear-gradient(160deg,#6366F1,#312E81)" data-bg="brand-gradient"></div>
+        <div class="bg-preset" style="background:linear-gradient(160deg,#000,#1a1a2e)" data-bg="black"></div>
+        <div class="bg-preset" style="background:linear-gradient(135deg,#667eea,#764ba2)" data-bg="purple-gradient"></div>
+        <div class="bg-preset" style="background:linear-gradient(135deg,#f093fb,#f5576c)" data-bg="pink-gradient"></div>
+        <div class="bg-preset" style="background:linear-gradient(135deg,#4facfe,#00f2fe)" data-bg="blue-gradient"></div>
+        <div class="bg-preset" style="background:linear-gradient(135deg,#43e97b,#38f9d7)" data-bg="green-gradient"></div>
+      </div>
+    </div>
+
+    <div class="inspector-section">
+      <div class="inspector-title">Typography</div>
+      <span class="inp-label">Font</span>
+      <select class="font-select">
+        <option>SF Pro Display</option>
+        <option>Inter</option>
+        <option>Poppins</option>
+        <option>Montserrat</option>
+        <option>Space Grotesk</option>
+      </select>
+    </div>
+
+    <div class="inspector-section">
+      <div class="inspector-title">Brand Color</div>
+      <div class="color-row" id="insp-colors"></div>
+    </div>
+
+    <div class="inspector-section">
+      <div class="inspector-title">Screenshot</div>
+      <span class="inp-label">Rotation</span>
+      <div class="slider-row">
+        <input type="range" min="-20" max="20" value="0" />
+        <span class="val">0°</span>
+      </div>
+      <span class="inp-label" style="margin-top:10px">Scale</span>
+      <div class="slider-row">
+        <input type="range" min="50" max="120" value="100" />
+        <span class="val">100%</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Variant Chooser Modal ────────────────────── -->
+<div class="variant-modal hidden" id="variant-modal">
+  <h2>Choose a variation</h2>
+  <p class="sub">AI generated 3 styles. Pick one to edit in the studio, or switch anytime.</p>
+  <div class="variant-row" id="variant-row"></div>
+  <button class="btn-start" id="variant-confirm" style="max-width:400px" onclick="confirmVariant()">
+    Use selected variation →
+  </button>
+</div>
+
+<script>
+// ─── State ──────────────────────────────────────
+let appName = '';
+let appDesc = '';
+let brandColor = '#6366F1';
+let files = [];
+let activeSlide = 0;
+let selectedVariant = 0;
+
+const COLORS = ['#6366F1','#0A84FF','#30D158','#FF9F0A','#BF5AF2','#FF453A','#FF375F','#64D2FF'];
+const VARIANTS = [
+  { name: 'Midnight', desc: 'Dark, moody, premium feel', bg: 'linear-gradient(160deg, #0D0D18 0%, #1a1033 100%)', text: '#fff' },
+  { name: 'Clean', desc: 'Light, airy, Apple-esque', bg: 'linear-gradient(160deg, #F5F5F7 0%, #E8E8ED 100%)', text: '#1d1d1f' },
+  { name: 'Vivid', desc: 'Brand-forward gradient', bg: '', text: '#fff' },
+];
+const SLIDE_HEADLINES = [
+  'Your app, **elevated**',
+  '**Smart** learning\nmade simple',
+  'Track your **progress**',
+  'AI-powered **insights**',
+  'Daily **challenges**',
+  'Join **thousands**',
+];
+const SLIDE_TYPES = ['hero', 'feature', 'feature', 'feature', 'feature', 'social'];
+
+// ─── Onboarding ─────────────────────────────────
+const obName = document.getElementById('ob-name');
+const obDesc = document.getElementById('ob-desc');
+const obStart = document.getElementById('ob-start');
+const obFileInput = document.getElementById('ob-file-input');
+
+function validateOnboard() {
+  obStart.disabled = !(obName.value.trim() && files.length > 0);
+}
+
+obName.addEventListener('input', () => { appName = obName.value; validateOnboard(); });
+obDesc.addEventListener('input', () => { appDesc = obDesc.value; });
+
+// Colors
+document.getElementById('ob-colors').addEventListener('click', (e) => {
+  const el = e.target.closest('.onboard-color');
+  if (!el) return;
+  document.querySelectorAll('.onboard-color').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  brandColor = el.dataset.color;
+});
+
+// File upload
+obFileInput.addEventListener('change', (e) => { handleObFiles(e.target.files); e.target.value = ''; });
+document.getElementById('ob-dropzone').addEventListener('dragover', (e) => e.preventDefault());
+document.getElementById('ob-dropzone').addEventListener('drop', (e) => { e.preventDefault(); handleObFiles(e.dataTransfer.files); });
+
+function handleObFiles(fileList) {
+  const newFiles = Array.from(fileList).filter(f => f.type.startsWith('image/')).slice(0, 6 - files.length);
+  files = [...files, ...newFiles].slice(0, 6);
+  renderObThumbs();
+  validateOnboard();
+}
+
+function renderObThumbs() {
+  const container = document.getElementById('ob-thumbs');
+  container.innerHTML = '';
+  files.forEach((f, i) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'onboard-thumb';
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(f);
+    const n = document.createElement('div');
+    n.className = 'n';
+    n.textContent = i + 1;
+    thumb.append(img, n);
+    container.appendChild(thumb);
+  });
+  if (files.length >= 6) document.getElementById('ob-dropzone').style.display = 'none';
+}
+
+// Start
+obStart.addEventListener('click', () => {
+  document.getElementById('onboard').classList.add('hidden');
+  document.getElementById('app-shell').style.display = 'grid';
+  document.getElementById('tb-project').textContent = `✦ ${appName}`;
+  initStudio();
+  // Show variant chooser first
+  setTimeout(() => showVariantChooser(), 500);
+});
+
+// ─── Studio Init ────────────────────────────────
+function initStudio() {
+  renderSlidesList();
+  renderCanvas();
+  renderCanvasNav();
+  renderInspectorColors();
+}
+
+function renderSlidesList() {
+  const list = document.getElementById('slides-list');
+  list.innerHTML = '';
+  const count = Math.min(files.length, 6);
+  document.getElementById('slide-count').textContent = count;
+  for (let i = 0; i < count; i++) {
+    const item = document.createElement('div');
+    item.className = `slide-item ${i === activeSlide ? 'active' : ''}`;
+    item.onclick = () => { activeSlide = i; renderSlidesList(); renderCanvas(); renderCanvasNav(); };
+    item.innerHTML = `
+      <div class="slide-drag"><span></span><span></span><span></span></div>
+      <div class="slide-thumb">
+        <img src="${URL.createObjectURL(files[i % files.length])}" />
+      </div>
+      <div class="slide-info">
+        <div class="slide-type ${SLIDE_TYPES[i]}">${SLIDE_TYPES[i].toUpperCase()}</div>
+        <div class="slide-label">${SLIDE_HEADLINES[i].replace(/\*\*/g, '').replace('\n', ' ')}</div>
+      </div>
+    `;
+    list.appendChild(item);
+  }
+}
+
+function renderCanvas() {
+  const frame = document.getElementById('canvas-frame');
+  const v = VARIANTS[selectedVariant];
+  const bg = selectedVariant === 2
+    ? `linear-gradient(160deg, ${brandColor}33 0%, ${brandColor}66 50%, #0D0D18 100%)`
+    : v.bg;
+  const textColor = v.text;
+  const headline = SLIDE_HEADLINES[activeSlide] || 'Slide';
+  const highlightedText = headline.replace(/\*\*(.+?)\*\*/g, `<span style="color:${brandColor}">$1</span>`).replace('\n', '<br>');
+  const screenshotSrc = files[activeSlide % files.length] ? URL.createObjectURL(files[activeSlide % files.length]) : '';
+
+  frame.style.background = bg;
+  frame.innerHTML = `
+    <div class="sim-content">
+      <div class="tagline" style="color:${textColor}">${highlightedText}</div>
+      <div class="phone-mock">
+        ${screenshotSrc ? `<img src="${screenshotSrc}" />` : '<div style="width:100%;height:100%;background:#2c2c2e"></div>'}
+      </div>
+      <div class="glow-bg" style="background:${brandColor}"></div>
+    </div>
+  `;
+
+  // Update inspector
+  document.getElementById('inp-headline').value = headline.replace('\n', '\n');
+}
+
+function renderCanvasNav() {
+  const nav = document.getElementById('canvas-nav');
+  const count = Math.min(files.length, 6);
+  nav.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const dot = document.createElement('div');
+    dot.className = `canvas-dot ${i === activeSlide ? 'active' : ''}`;
+    dot.onclick = () => { activeSlide = i; renderSlidesList(); renderCanvas(); renderCanvasNav(); };
+    nav.appendChild(dot);
+  }
+  const counter = document.createElement('span');
+  counter.className = 'canvas-counter';
+  counter.textContent = `${activeSlide + 1} / ${count}`;
+  nav.appendChild(counter);
+}
+
+function renderInspectorColors() {
+  const row = document.getElementById('insp-colors');
+  row.innerHTML = '';
+  COLORS.forEach(c => {
+    const dot = document.createElement('div');
+    dot.className = `color-dot ${c === brandColor ? 'active' : ''}`;
+    dot.style.background = c;
+    dot.onclick = () => { brandColor = c; renderInspectorColors(); renderCanvas(); };
+    row.appendChild(dot);
+  });
+}
+
+// ─── Background presets ─────────────────────────
+document.getElementById('bg-presets').addEventListener('click', (e) => {
+  const preset = e.target.closest('.bg-preset');
+  if (!preset) return;
+  document.querySelectorAll('.bg-preset').forEach(p => p.classList.remove('active'));
+  preset.classList.add('active');
+});
+
+// ─── Variant Chooser ────────────────────────────
+function showVariantChooser() {
+  const modal = document.getElementById('variant-modal');
+  modal.classList.remove('hidden');
+  const row = document.getElementById('variant-row');
+  row.innerHTML = '';
+  VARIANTS.forEach((v, vi) => {
+    const bg = vi === 2
+      ? `linear-gradient(160deg, ${brandColor}33, ${brandColor}66, #0D0D18)`
+      : v.bg;
+    const option = document.createElement('div');
+    option.className = `variant-option ${vi === selectedVariant ? 'selected' : ''}`;
+    option.onclick = () => {
+      selectedVariant = vi;
+      document.querySelectorAll('.variant-option').forEach((o, i) => {
+        o.classList.toggle('selected', i === vi);
+        o.querySelector('.variant-select-btn').textContent = i === vi ? '✓ Selected' : 'Select';
+      });
+    };
+    const count = Math.min(files.length, 6);
+    option.innerHTML = `
+      <div class="v-name">${v.name}</div>
+      <div class="v-desc">${v.desc}</div>
+      <div class="variant-strips">
+        ${Array.from({ length: count }).map((_, si) => {
+          const textColor = v.text;
+          const hl = SLIDE_HEADLINES[si].replace(/\*\*(.+?)\*\*/g, `<span style="color:${brandColor}">$1</span>`).replace('\n', '<br>');
+          const src = files[si % files.length] ? URL.createObjectURL(files[si % files.length]) : '';
+          return `
+            <div class="variant-mini" style="background:${bg}; display:flex; flex-direction:column; align-items:center; padding:12% 6% 0; overflow:hidden">
+              <div style="font-size:5px; font-weight:800; text-align:center; color:${textColor}; line-height:1.2; margin-bottom:6%; z-index:2">${hl}</div>
+              <div style="width:60%; aspect-ratio:9/19.5; border-radius:4px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); z-index:2">
+                ${src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover" />` : ''}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <button class="variant-select-btn">${vi === selectedVariant ? '✓ Selected' : 'Select'}</button>
+    `;
+    row.appendChild(option);
+  });
+}
+
+function confirmVariant() {
+  document.getElementById('variant-modal').classList.add('hidden');
+  renderCanvas();
+  renderSlidesList();
+}
+</script>
+</body>
+</html>

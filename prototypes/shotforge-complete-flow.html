@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shotforge — Complete Flow</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #09090b; --surface: #111113; --surface-2: #1c1c1e; --surface-3: #27272a; --surface-4: #3f3f46;
+    --text: #fafafa; --text-2: #a1a1aa; --text-3: #52525b; --text-4: #71717a;
+    --indigo: #6366f1; --purple: #8b5cf6; --green: #22c55e; --orange: #f59e0b;
+    --red: #ef4444; --pink: #ec4899; --blue: #3b82f6; --cyan: #06b6d4;
+    --r: 16px; --rs: 10px; --rx: 6px;
+    --font: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  button { font-family: var(--font); cursor: pointer; border: none; outline: none; }
+  input, textarea, select { font-family: var(--font); outline: none; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface-4); border-radius: 2px; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.05); opacity: 1; } }
+  @keyframes scaleIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+  .fu { animation: fadeUp 0.5s var(--ease) both; }
+  .fu1 { animation: fadeUp 0.5s var(--ease) 0.08s both; }
+  .fu2 { animation: fadeUp 0.5s var(--ease) 0.16s both; }
+  .fu3 { animation: fadeUp 0.5s var(--ease) 0.24s both; }
+
+  /* ═══════════════════════════════════════════════════
+     NAVBAR (shared across all steps)
+     ═══════════════════════════════════════════════════ */
+  .nav { position: fixed; top: 0; left: 0; right: 0; height: 48px; background: rgba(9,9,11,0.88); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; padding: 0 16px; gap: 10px; z-index: 200; }
+  .nav-brand { font-size: 14px; font-weight: 800; background: linear-gradient(135deg, var(--indigo), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .nav-steps { position: absolute; left: 50%; transform: translateX(-50%); display: flex; background: var(--surface-2); border-radius: 7px; overflow: hidden; border: 1px solid rgba(255,255,255,0.04); }
+  .ns { padding: 5px 14px; font-size: 11px; font-weight: 600; color: var(--text-3); transition: all 0.15s; }
+  .ns.active { background: var(--surface-3); color: var(--text); }
+  .ns.done { color: var(--green); }
+  .ns.done::before { content: "✓ "; }
+  .nav-right { margin-left: auto; display: flex; gap: 6px; }
+  .nav-btn { height: 28px; padding: 0 12px; border-radius: 7px; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 4px; transition: all 0.12s; }
+  .nav-btn.ghost { background: var(--surface-2); color: var(--text-3); }
+  .nav-btn.ghost:hover { background: var(--surface-3); color: var(--text-2); }
+  .nav-btn.green { background: var(--green); color: #000; }
+  .nav-btn.green:hover { background: #34d058; }
+  .nav-btn.preview { background: var(--surface-2); border: 1px solid rgba(255,255,255,0.06); color: var(--text-2); }
+  .nav-btn.preview:hover { background: var(--surface-3); color: var(--text); }
+  .nav-btn.preview.on { background: var(--indigo); color: #fff; border-color: var(--indigo); }
+
+  /* ═══════════════════════════════════════════════════
+     PAGES
+     ═══════════════════════════════════════════════════ */
+  .page { display: none; min-height: 100vh; padding-top: 48px; }
+  .page.active { display: flex; }
+
+  /* ═══ PAGE 1: CREATE ═══════════════════════════════ */
+  .p-create { flex-direction: column; align-items: center; justify-content: center; padding: 80px 24px; }
+  .hero-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.12)); border: 1px solid rgba(99,102,241,0.2); border-radius: 100px; font-size: 12px; font-weight: 600; color: var(--indigo); margin-bottom: 20px; }
+  .hero-badge .sp { animation: breathe 2s ease infinite; }
+  .hero-h { font-size: clamp(32px, 5vw, 56px); font-weight: 900; text-align: center; letter-spacing: -2px; line-height: 1.05; margin-bottom: 10px; }
+  .hero-h .g { background: linear-gradient(135deg, var(--indigo), var(--purple), var(--pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero-sub { font-size: clamp(14px, 2vw, 17px); color: var(--text-2); text-align: center; max-width: 480px; line-height: 1.5; margin-bottom: 40px; }
+
+  .card { max-width: 540px; width: 100%; background: var(--surface); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+  .fld { margin-bottom: 20px; }
+  .fld label { display: block; font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .fld input, .fld textarea { width: 100%; background: var(--bg); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px 16px; font-size: 15px; color: var(--text); transition: all 0.15s; }
+  .fld input:focus, .fld textarea:focus { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
+  .fld textarea { resize: none; line-height: 1.5; }
+  .fld .hint { font-size: 11px; color: var(--text-3); margin-top: 5px; }
+
+  .uz { border: 2px dashed rgba(255,255,255,0.1); border-radius: var(--r); padding: 24px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 10px; }
+  .uz:hover { border-color: var(--indigo); background: rgba(99,102,241,0.03); }
+  .uz.drag { border-color: var(--indigo); background: rgba(99,102,241,0.06); }
+  .uz input { display: none; }
+
+  .tg { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 16px; }
+  .th { aspect-ratio: 9/19.5; background: var(--surface-2); border-radius: 8px; overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.04); }
+  .th.empty { display: flex; align-items: center; justify-content: center; }
+  .th.empty span { font-size: 10px; color: var(--text-3); font-weight: 600; }
+  .th img { width: 100%; height: 100%; object-fit: cover; }
+  .th .n { position: absolute; top: 3px; left: 3px; font-size: 8px; font-weight: 800; background: rgba(0,0,0,0.65); padding: 1px 4px; border-radius: 3px; color: var(--text-2); }
+  .th .rm { position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 50%; background: rgba(0,0,0,0.65); color: var(--red); font-size: 9px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: all 0.1s; }
+  .th:hover .rm { opacity: 1; }
+
+  .cr { display: flex; gap: 8px; flex-wrap: wrap; }
+  .cs { width: 36px; height: 36px; border-radius: var(--rs); cursor: pointer; border: 2.5px solid transparent; transition: all 0.12s; }
+  .cs:hover { transform: scale(1.08); }
+  .cs.on { border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.1); }
+
+  .gb { width: 100%; height: 52px; border-radius: 14px; font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; transition: all 0.2s; }
+  .gb.ready { background: linear-gradient(135deg, var(--indigo), var(--purple)); color: #fff; box-shadow: 0 8px 32px rgba(99,102,241,0.3); }
+  .gb.ready:hover { transform: translateY(-1px); box-shadow: 0 12px 40px rgba(99,102,241,0.4); }
+  .gb:disabled { background: var(--surface-2); color: var(--text-3); cursor: not-allowed; box-shadow: none; }
+
+  /* ═══ PAGE 2: GENERATE ═════════════════════════════ */
+  .p-gen { flex-direction: column; align-items: center; justify-content: center; padding: 80px 24px; text-align: center; }
+  .gen-orb { width: 72px; height: 72px; border-radius: 50%; background: linear-gradient(135deg, var(--indigo), var(--purple)); margin-bottom: 28px; animation: breathe 2s ease infinite; box-shadow: 0 0 60px rgba(99,102,241,0.3); }
+  .p-gen h2 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+  .p-gen .sub { color: var(--text-2); font-size: 14px; margin-bottom: 28px; }
+  .gsteps { display: flex; flex-direction: column; gap: 14px; text-align: left; max-width: 320px; width: 100%; }
+  .gs { display: flex; align-items: center; gap: 12px; }
+  .gs .d { width: 22px; height: 22px; border-radius: 50%; background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; transition: all 0.3s; }
+  .gs.act .d { background: var(--indigo); color: #fff; animation: breathe 1.5s ease infinite; }
+  .gs.dn .d { background: var(--green); color: #000; }
+  .gs .t { font-size: 13px; color: var(--text-3); transition: all 0.3s; }
+  .gs.act .t { color: var(--text); }
+  .gs.dn .t { color: var(--green); }
+
+  /* ═══ PAGE 3: CHOOSE ═══════════════════════════════ */
+  .p-choose { flex-direction: column; padding: 80px 24px 100px; overflow-y: auto; }
+  .choose-hdr { text-align: center; margin-bottom: 40px; }
+  .choose-hdr h2 { font-size: 28px; font-weight: 900; letter-spacing: -1px; margin-bottom: 6px; }
+  .choose-hdr p { color: var(--text-2); font-size: 14px; }
+
+  .vblock { margin-bottom: 48px; max-width: 1200px; width: 100%; margin-left: auto; margin-right: auto; }
+  .vb-hdr { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .vb-name { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
+  .vb-pill { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .vb-pill.dk { background: rgba(99,102,241,0.15); color: var(--indigo); }
+  .vb-pill.lt { background: rgba(34,197,94,0.15); color: var(--green); }
+  .vb-pill.vv { background: rgba(245,158,11,0.15); color: var(--orange); }
+  .vb-acts { margin-left: auto; display: flex; gap: 8px; }
+  .vb-btn { height: 34px; padding: 0 18px; border-radius: var(--rs); font-size: 12px; font-weight: 700; transition: all 0.15s; }
+  .vb-btn.ref { background: var(--surface); color: var(--text-2); border: 1px solid rgba(255,255,255,0.06); }
+  .vb-btn.ref:hover { background: var(--surface-2); color: var(--text); }
+  .vb-btn.sel { background: var(--surface); color: var(--text-2); border: 1px solid rgba(255,255,255,0.06); }
+  .vb-btn.sel:hover { background: var(--surface-2); color: var(--text); }
+  .vb-btn.sel.on { background: var(--indigo); color: #fff; border-color: var(--indigo); }
+
+  .sstrip { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
+  .sc { flex-shrink: 0; width: 170px; aspect-ratio: 1290/2796; border-radius: 14px; overflow: hidden; scroll-snap-align: start; position: relative; box-shadow: 0 8px 28px rgba(0,0,0,0.3); transition: all 0.2s; cursor: pointer; }
+  .sc:hover { transform: translateY(-4px) scale(1.01); box-shadow: 0 14px 40px rgba(0,0,0,0.4); }
+
+  .sci { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; padding: 13% 8% 0; position: relative; overflow: hidden; }
+  .sci .hl { font-size: 10px; font-weight: 800; text-align: center; line-height: 1.2; margin-bottom: 5%; z-index: 2; }
+  .sci .dv { width: 56%; aspect-ratio: 9/19.5; border-radius: 8px; overflow: hidden; z-index: 2; box-shadow: 0 6px 20px rgba(0,0,0,0.4); border: 1.5px solid rgba(255,255,255,0.08); }
+  .sci .dv img { width: 100%; height: 100%; object-fit: cover; }
+  .sci .gl { position: absolute; width: 130%; height: 60%; bottom: -5%; left: -15%; border-radius: 50%; filter: blur(50px); opacity: 0.2; z-index: 1; }
+
+  .export-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 68px; background: rgba(9,9,11,0.92); backdrop-filter: blur(24px); border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; gap: 16px; z-index: 200; transform: translateY(100%); transition: all 0.3s var(--ease); }
+  .export-bar.vis { transform: translateY(0); }
+  .export-bar .info { font-size: 13px; color: var(--text-2); }
+  .export-bar .info strong { color: var(--text); }
+  .eb-sizes { display: flex; gap: 4px; }
+  .eb-sz { font-size: 10px; padding: 3px 7px; background: var(--surface); border-radius: var(--rx); color: var(--text-3); }
+  .eb-dl { height: 40px; padding: 0 24px; border-radius: var(--rs); font-size: 14px; font-weight: 700; background: var(--green); color: #000; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
+  .eb-dl:hover { background: #34d058; }
+
+  /* ═══ PAGE 4: REFINE ═══════════════════════════════ */
+  .p-refine { flex-direction: column; height: 100vh; overflow: hidden; }
+  .refine-layout { flex: 1; display: grid; grid-template-rows: 1fr; grid-template-columns: 1fr 272px; overflow: hidden; transition: grid-template-columns 0.3s var(--ease-out); }
+  .refine-layout.pv { grid-template-columns: 1fr 0px; }
+  .refine-layout.pv .r-insp { opacity: 0; pointer-events: none; overflow: hidden; border: none; }
+  .refine-layout.pv .r-card { border-color: transparent !important; transform: none !important; cursor: default; }
+  .refine-layout.pv .r-card.sel { box-shadow: none; }
+
+  .r-slides { overflow-x: auto; overflow-y: hidden; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 16px 20px; }
+  .r-card { flex-shrink: 0; width: calc((100% - 5 * 14px) / 6); min-width: 80px; max-width: 200px; aspect-ratio: 1290/2796; border-radius: 20px; overflow: hidden; position: relative; cursor: pointer; border: 3px solid transparent; transition: all 0.25s var(--ease-out); }
+  .r-card:hover { border-color: rgba(255,255,255,0.08); transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+  .r-card.sel { border-color: var(--indigo); box-shadow: 0 0 0 4px rgba(99,102,241,0.12), 0 16px 48px rgba(99,102,241,0.1); transform: translateY(-4px); }
+  .r-num { position: absolute; top: 8px; left: 8px; z-index: 5; width: 22px; height: 22px; border-radius: 6px; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); font-size: 10px; font-weight: 800; color: var(--text-2); display: flex; align-items: center; justify-content: center; }
+  .r-card.sel .r-num { background: var(--indigo); color: #fff; }
+  .r-badge { position: absolute; top: 8px; right: 8px; z-index: 5; padding: 2px 6px; border-radius: 4px; font-size: 7px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); color: var(--text-2); }
+  .r-inner { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; padding: 11% 8% 0; position: relative; overflow: hidden; }
+  .r-inner .ri-hl { font-size: clamp(8px, 1.2vw, 14px); font-weight: 800; text-align: center; line-height: 1.15; letter-spacing: -0.2px; margin-bottom: 5%; z-index: 2; }
+  .r-inner .ri-dv { width: 55%; aspect-ratio: 9/19.5; border-radius: clamp(4px, 0.6vw, 10px); overflow: hidden; z-index: 2; box-shadow: 0 4px 16px rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.06); }
+  .r-inner .ri-dv img { width: 100%; height: 100%; object-fit: cover; }
+  .r-inner .ri-dv .mock { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+  .r-inner .ri-gl { position: absolute; width: 130%; height: 60%; bottom: -5%; left: -15%; border-radius: 50%; filter: blur(40px); opacity: 0.18; z-index: 1; }
+
+  /* Inspector */
+  .r-insp { background: var(--surface); border-left: 1px solid rgba(255,255,255,0.06); overflow-y: auto; transition: opacity 0.2s; }
+  .ri-sel { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; align-items: center; gap: 8px; }
+  .ri-sel-n { width: 26px; height: 26px; border-radius: 7px; background: var(--indigo); color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .ri-sel-type { font-size: 12px; font-weight: 700; }
+  .ri-sel-hint { font-size: 10px; color: var(--text-4); }
+  .ri-toolbar { display: flex; gap: 3px; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .ri-tool { width: 28px; height: 28px; border-radius: 6px; background: var(--surface-2); color: var(--text-3); font-size: 12px; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
+  .ri-tool:hover { background: var(--surface-3); color: var(--text-2); }
+  .ri-tool.pr { background: var(--indigo); color: #fff; }
+
+  .ri-sec { border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .ri-hdr { display: flex; align-items: center; gap: 8px; padding: 10px 14px; cursor: pointer; transition: all 0.1s; }
+  .ri-hdr:hover { background: rgba(255,255,255,0.02); }
+  .ri-hdr-ic { font-size: 13px; width: 18px; text-align: center; }
+  .ri-hdr-nm { font-size: 12px; font-weight: 600; flex: 1; }
+  .ri-hdr-acts { display: flex; gap: 2px; }
+  .ri-act { width: 24px; height: 24px; border-radius: 5px; background: var(--surface-2); color: var(--text-3); font-size: 10px; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
+  .ri-act:hover { background: var(--surface-3); }
+  .ri-act.on { background: var(--indigo); color: #fff; }
+  .ri-chv { font-size: 10px; color: var(--text-4); transition: transform 0.2s; }
+  .ri-sec.open .ri-chv { transform: rotate(180deg); }
+  .ri-sub { font-size: 9px; color: var(--text-4); padding: 0 14px 6px 40px; }
+  .ri-body { padding: 0 14px 12px; display: none; }
+  .ri-sec.open .ri-body { display: block; }
+  .ri-label { font-size: 10px; color: var(--text-4); margin-bottom: 4px; display: block; font-weight: 500; }
+  .ri-inp { width: 100%; background: var(--bg); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 7px 10px; font-size: 12px; color: var(--text); transition: all 0.1s; margin-bottom: 6px; }
+  .ri-inp:focus { border-color: var(--indigo); }
+  .ri-select { width: 100%; background: var(--bg); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 6px 10px; font-size: 11px; color: var(--text); appearance: none; margin-bottom: 6px; }
+  .ri-bgs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .ri-bg { aspect-ratio: 1; border-radius: 5px; cursor: pointer; border: 2px solid transparent; transition: all 0.1s; }
+  .ri-bg:hover { transform: scale(1.06); }
+  .ri-bg.on { border-color: #fff; }
+  .ri-colors { display: flex; gap: 4px; flex-wrap: wrap; }
+  .ri-c { width: 20px; height: 20px; border-radius: 5px; cursor: pointer; border: 2px solid transparent; transition: all 0.1s; }
+  .ri-c:hover { transform: scale(1.1); }
+  .ri-c.on { border-color: #fff; }
+  .ri-slider { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .ri-slider input[type="range"] { flex: 1; accent-color: var(--indigo); height: 2px; }
+  .ri-slider .val { font-size: 9px; color: var(--text-4); min-width: 26px; text-align: right; font-family: 'SF Mono', monospace; }
+</style>
+</head>
+<body>
+
+<!-- ═══ NAVBAR ════════════════════════════════════════ -->
+<nav class="nav" id="navbar">
+  <div class="nav-brand">Shotforge</div>
+  <div class="nav-steps" id="nav-steps">
+    <div class="ns active" data-s="0">Create</div>
+    <div class="ns" data-s="1">Generate</div>
+    <div class="ns" data-s="2">Choose</div>
+    <div class="ns" data-s="3">Refine</div>
+  </div>
+  <div class="nav-right" id="nav-right"></div>
+</nav>
+
+<!-- ═══ PAGE 1: CREATE ═══════════════════════════════ -->
+<div class="page p-create active" id="pg-0">
+  <div class="hero-badge fu"><span class="sp">✦</span> AI-Powered</div>
+  <h1 class="hero-h fu1">App Store screenshots<br><span class="g">in one click</span></h1>
+  <p class="hero-sub fu2">Describe your app, drop your screens, pick a color. AI generates 3 complete sets — you choose and refine.</p>
+  <div class="card fu3">
+    <div class="fld"><label>App Name</label><input id="in-name" type="text" placeholder="e.g. Sensei" autocomplete="off" /></div>
+    <div class="fld"><label>What does your app do?</label><textarea id="in-desc" rows="3" placeholder="Gamified learning platform for business with daily challenges, streaks, and AI-powered paths."></textarea><div class="hint">Be specific — this powers the AI copy for each slide.</div></div>
+    <div class="fld">
+      <label>Screenshots (up to 6)</label>
+      <div class="uz" id="uz" onclick="document.getElementById('finput').click()"><div style="font-size:32px;margin-bottom:6px;opacity:0.5">📱</div><h4 style="font-size:14px;font-weight:600;margin-bottom:2px">Drop screenshots here</h4><p style="font-size:11px;color:var(--text-3)">PNG/JPG · up to 6 files</p><input type="file" id="finput" multiple accept="image/png,image/jpeg" /></div>
+      <div class="tg" id="tg"></div>
+    </div>
+    <div class="fld"><label>Brand Color</label><div class="cr" id="colors"></div></div>
+    <button class="gb" id="gen-btn" disabled>✦ Generate 3 Variations</button>
+  </div>
+</div>
+
+<!-- ═══ PAGE 2: GENERATE ═════════════════════════════ -->
+<div class="page p-gen" id="pg-1">
+  <div class="gen-orb"></div>
+  <h2 class="fu">Crafting your screenshots</h2>
+  <p class="sub fu1">AI is analyzing your app and generating 3 unique sets</p>
+  <div class="gsteps fu2" id="gsteps">
+    <div class="gs act"><div class="d">1</div><span class="t">Analyzing screenshots</span></div>
+    <div class="gs"><div class="d">2</div><span class="t">Writing conversion-optimized copy</span></div>
+    <div class="gs"><div class="d">3</div><span class="t">Rendering Midnight variation</span></div>
+    <div class="gs"><div class="d">4</div><span class="t">Rendering Clean variation</span></div>
+    <div class="gs"><div class="d">5</div><span class="t">Rendering Vivid variation</span></div>
+  </div>
+</div>
+
+<!-- ═══ PAGE 3: CHOOSE ═══════════════════════════════ -->
+<div class="page p-choose" id="pg-2"></div>
+<div class="export-bar" id="export-bar">
+  <div class="info">Selected: <strong id="exp-label">—</strong></div>
+  <div class="eb-sizes"><span class="eb-sz">6.9"</span><span class="eb-sz">6.7"</span><span class="eb-sz">6.5"</span><span class="eb-sz">6.1"</span></div>
+  <button class="eb-dl" onclick="alert('Would download ZIP with all sizes')">⬇ Download ZIP</button>
+</div>
+
+<!-- ═══ PAGE 4: REFINE ═══════════════════════════════ -->
+<div class="page p-refine" id="pg-3">
+  <div class="refine-layout" id="refine-layout">
+    <div class="r-slides" id="r-slides"></div>
+    <div class="r-insp" id="r-insp"></div>
+  </div>
+</div>
+
+<script>
+// ─── Data ───────────────────────────────────────
+const COLORS = ['#6366f1','#3b82f6','#06b6d4','#22c55e','#f59e0b','#ef4444','#ec4899','#8b5cf6'];
+const BGS = [
+  { bg:'linear-gradient(160deg,#0D0D18,#1a1033)', t:'#fff', mb:'#1c1c1e', mc:'#555' },
+  { bg:'linear-gradient(160deg,#F5F5F7,#E8E8ED)', t:'#1d1d1f', mb:'#e5e5ea', mc:'#888' },
+  { bg:null, t:'#fff', mb:'#1c1c1e', mc:'#555' },
+  { bg:'linear-gradient(160deg,#000,#0a0a1a)', t:'#fff', mb:'#111', mc:'#444' },
+  { bg:'linear-gradient(135deg,#667eea,#764ba2)', t:'#fff', mb:'#2d2060', mc:'#8875c0' },
+  { bg:'linear-gradient(135deg,#f093fb,#f5576c)', t:'#fff', mb:'#4a1030', mc:'#c06080' },
+  { bg:'linear-gradient(135deg,#4facfe,#00f2fe)', t:'#fff', mb:'#0a2a4a', mc:'#4090c0' },
+  { bg:'linear-gradient(135deg,#43e97b,#38f9d7)', t:'#1d1d1f', mb:'#d0f0e0', mc:'#5a9' },
+];
+const HLS = ['Your app,\n**elevated**','**Smart** learning\nmade simple','Track your\n**progress**','AI-powered\n**insights**','Daily\n**challenges**','Join **thousands**\nof learners'];
+const TYPES = ['Hero','Feature','Feature','Feature','Feature','Social'];
+const ICONS = ['📊','🏠','👤','⚡','📱','🎯'];
+const VNAMES = [
+  { name:'Midnight', pill:'dk', bg:'linear-gradient(160deg,#0D0D18,#1a1033)', t:'#fff' },
+  { name:'Clean', pill:'lt', bg:'linear-gradient(160deg,#F5F5F7,#E8E8ED)', t:'#1d1d1f' },
+  { name:'Vivid', pill:'vv', bg:null, t:'#fff' },
+];
+
+// ─── State ──────────────────────────────────────
+let S = { pg:0, name:'', desc:'', color:'#6366f1', files:[], selVar:null, rSel:0, bgIdx:0, preview:false, sections:{layout:false,bg:true,title:true,device:true} };
+
+function bgFor(idx) { return BGS[idx||S.bgIdx].bg || `linear-gradient(160deg,${S.color}22,${S.color}55,#0D0D18)`; }
+function varBg(vi) { return vi===2 ? `linear-gradient(160deg,${S.color}33,${S.color}66,#0D0D18)` : VNAMES[vi].bg; }
+function h(t) { return t.replace(/\*\*(.+?)\*\*/g,`<span style="color:${S.color}">$1</span>`).replace(/\n/g,'<br>'); }
+
+// ─── Navigation ─────────────────────────────────
+function go(pg) {
+  S.pg = pg;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(`pg-${pg}`).classList.add('active');
+  document.querySelectorAll('.ns').forEach((s,i) => { s.classList.remove('active','done'); if(i<pg) s.classList.add('done'); if(i===pg) s.classList.add('active'); });
+  // Nav right buttons
+  const nr = document.getElementById('nav-right');
+  nr.innerHTML = '';
+  if (pg === 3) {
+    nr.innerHTML = `
+      <button class="nav-btn ghost" onclick="go(2)">← Variants</button>
+      <button class="nav-btn preview ${S.preview?'on':''}" id="pvBtn" onclick="togglePv()">👁 Preview</button>
+      <button class="nav-btn green">⬇ Export</button>
+    `;
+  }
+  if (pg !== 3) { S.preview = false; document.getElementById('export-bar')?.classList.remove('vis'); }
+  document.body.style.overflow = (pg === 2) ? 'auto' : 'hidden';
+  window.scrollTo(0,0);
+}
+
+// ─── Page 1: Create ─────────────────────────────
+const inName = document.getElementById('in-name');
+const inDesc = document.getElementById('in-desc');
+const genBtn = document.getElementById('gen-btn');
+
+function validate() { const ok = inName.value.trim() && S.files.length > 0; genBtn.disabled = !ok; genBtn.className = `gb ${ok?'ready':''}`; }
+inName.addEventListener('input', () => { S.name = inName.value; validate(); });
+inDesc.addEventListener('input', () => { S.desc = inDesc.value; });
+
+// Colors
+const colorsEl = document.getElementById('colors');
+COLORS.forEach((c,i) => { const d = document.createElement('div'); d.className = `cs ${i===0?'on':''}`; d.style.background = c; d.onclick = () => { document.querySelectorAll('.cs').forEach(x=>x.classList.remove('on')); d.classList.add('on'); S.color = c; }; colorsEl.appendChild(d); });
+
+// Upload
+const finput = document.getElementById('finput');
+const uzEl = document.getElementById('uz');
+uzEl.addEventListener('dragover', e => { e.preventDefault(); uzEl.classList.add('drag'); });
+uzEl.addEventListener('dragleave', () => uzEl.classList.remove('drag'));
+uzEl.addEventListener('drop', e => { e.preventDefault(); uzEl.classList.remove('drag'); addFiles(e.dataTransfer.files); });
+finput.addEventListener('change', e => { addFiles(e.target.files); e.target.value = ''; });
+
+function addFiles(fl) { const nf = Array.from(fl).filter(f=>f.type.startsWith('image/')).slice(0,6-S.files.length); S.files = [...S.files,...nf].slice(0,6); renderThumbs(); validate(); }
+function rmFile(i) { S.files.splice(i,1); renderThumbs(); validate(); }
+function renderThumbs() {
+  const g = document.getElementById('tg'); g.innerHTML = '';
+  for (let i=0;i<6;i++) { const t=document.createElement('div'); t.className=`th ${S.files[i]?'':'empty'}`; if(S.files[i]){const img=document.createElement('img');img.src=URL.createObjectURL(S.files[i]);const n=document.createElement('div');n.className='n';n.textContent=i+1;const rm=document.createElement('div');rm.className='rm';rm.textContent='✕';rm.onclick=e=>{e.stopPropagation();rmFile(i)};t.append(img,n,rm);}else{t.innerHTML=`<span>${i+1}</span>`;} g.appendChild(t); }
+  uzEl.style.display = S.files.length>=6?'none':'';
+}
+renderThumbs();
+
+genBtn.addEventListener('click', () => { go(1); runGen(); });
+
+// ─── Page 2: Generate ───────────────────────────
+function runGen() {
+  const steps = document.querySelectorAll('#gsteps .gs'); let i=0;
+  const iv = setInterval(()=>{
+    if(i>0){steps[i-1].classList.remove('act');steps[i-1].classList.add('dn');steps[i-1].querySelector('.d').textContent='✓';}
+    if(i<steps.length){steps[i].classList.add('act');}
+    else{clearInterval(iv);setTimeout(()=>{go(2);renderChoose();},500);}
+    i++;
+  },700);
+}
+
+// ─── Page 3: Choose ─────────────────────────────
+function renderChoose() {
+  const pg = document.getElementById('pg-2');
+  const cnt = Math.min(S.files.length,6);
+  pg.innerHTML = `<div class="choose-hdr fu"><h2>Your screenshots are ready</h2><p>${cnt} slides × 3 variations. Pick one, then refine if needed.</p></div>`;
+  VNAMES.forEach((v,vi) => {
+    const bg = varBg(vi);
+    const block = document.createElement('div'); block.className = 'vblock fu';
+    block.innerHTML = `
+      <div class="vb-hdr"><div class="vb-name">${v.name}</div><div class="vb-pill ${v.pill}">${v.name}</div>
+        <div class="vb-acts"><button class="vb-btn ref" onclick="openRefine(${vi})">✎ Refine</button><button class="vb-btn sel" data-vi="${vi}" onclick="selVar(${vi})">Select</button></div>
+      </div>
+      <div class="sstrip">${Array.from({length:cnt}).map((_,si)=>{
+        const src=S.files[si]?URL.createObjectURL(S.files[si]):'';
+        return `<div class="sc" style="background:${bg}" onclick="openRefine(${vi},${si})"><div class="sci"><div class="hl" style="color:${v.t}">${h(HLS[si])}</div><div class="dv">${src?`<img src="${src}"/>`:`<div style="width:100%;height:100%;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:16px;color:#666">${ICONS[si]}</div>`}</div><div class="gl" style="background:${S.color}"></div></div></div>`;
+      }).join('')}</div>`;
+    pg.appendChild(block);
+  });
+}
+
+function selVar(vi) {
+  S.selVar = vi;
+  document.querySelectorAll('.vb-btn.sel').forEach((b,i) => { b.className = `vb-btn sel ${i===vi?'on':''}`; b.textContent = i===vi?'✓ Selected':'Select'; });
+  document.getElementById('exp-label').textContent = `${VNAMES[vi].name} — ${Math.min(S.files.length,6)} slides`;
+  document.getElementById('export-bar').classList.add('vis');
+}
+
+function openRefine(vi, slideIdx) {
+  S.selVar = vi;
+  S.rSel = slideIdx || 0;
+  // Map variant to bgIdx
+  S.bgIdx = vi === 0 ? 0 : vi === 1 ? 1 : 2;
+  go(3);
+  renderRefine();
+}
+
+// ─── Page 4: Refine ─────────────────────────────
+function renderRefine() { renderRSlides(); renderRInsp(); }
+
+function renderRSlides() {
+  const el = document.getElementById('r-slides'); el.innerHTML = '';
+  const b = bgFor(), tc = BGS[S.bgIdx].t, mb = BGS[S.bgIdx].mb, mc = BGS[S.bgIdx].mc;
+  const cnt = Math.min(S.files.length,6);
+  for (let i=0;i<cnt;i++) {
+    const c = document.createElement('div'); c.className = `r-card ${i===S.rSel?'sel':''}`;
+    c.style.background = b;
+    c.onclick = () => { S.rSel = i; renderRefine(); };
+    const src = S.files[i] ? URL.createObjectURL(S.files[i]) : '';
+    c.innerHTML = `<div class="r-num">${i+1}</div><div class="r-badge">${TYPES[i]}</div><div class="r-inner"><div class="ri-hl" style="color:${tc}">${h(HLS[i])}</div><div class="ri-dv">${src?`<img src="${src}"/>`:`<div class="mock" style="background:${mb};color:${mc};font-size:clamp(10px,1.2vw,18px)">${ICONS[i]}</div>`}</div><div class="ri-gl" style="background:${S.color}"></div></div>`;
+    el.appendChild(c);
+  }
+}
+
+function renderRInsp() {
+  const el = document.getElementById('r-insp'); const i = S.rSel;
+  el.innerHTML = `
+    <div class="ri-sel"><div class="ri-sel-n">${i+1}</div><div><div class="ri-sel-type">${TYPES[i]}</div><div class="ri-sel-hint">Editing slide ${i+1} of ${Math.min(S.files.length,6)}</div></div></div>
+    <div class="ri-toolbar"><button class="ri-tool pr">✓</button><button class="ri-tool">↺</button><button class="ri-tool">❐</button><button class="ri-tool">⬇</button><button class="ri-tool">📋</button><button class="ri-tool">🔒</button><button class="ri-tool" style="color:var(--red)">🗑</button></div>
+    ${renderSec('layout','☰','Layout',false,`<select class="ri-select"><option ${TYPES[i]==='Hero'?'selected':''}>Hero — Title + Device</option><option ${TYPES[i]==='Feature'?'selected':''}>Feature — Headline + Device</option><option>Dual — Headline + 2 Devices</option><option>Stats — Numbers + Device</option></select>`)}
+    ${renderSec('bg','🖼','Background',false,`<div class="ri-bgs" id="ri-bgs"></div>`)}
+    ${renderSec('title','Tt','Title',true,`<textarea class="ri-inp" rows="2" style="resize:none">${HLS[i].replace(/\*\*/g,'')}</textarea><span class="ri-label">Font</span><select class="ri-select"><option>SF Pro Display</option><option selected>Inter</option><option>Poppins</option><option>Montserrat</option><option>Space Grotesk</option></select><span class="ri-label">Size</span><div class="ri-slider"><input type="range" min="40" max="100" value="68" oninput="this.nextElementSibling.textContent=this.value"/><span class="val">68</span></div><span class="ri-label">Accent Color</span><div class="ri-colors" id="ri-cls"></div>`,`slide ${i+1}`)}
+    ${renderSec('device','📱','Device',true,`<span class="ri-label">Screenshot</span><select class="ri-select">${ICONS.map((ic,idx)=>`<option ${idx===i?'selected':''}>Screen ${idx+1} — ${TYPES[idx]}</option>`).join('')}</select><span class="ri-label">Rotation</span><div class="ri-slider"><input type="range" min="-20" max="20" value="0" oninput="this.nextElementSibling.textContent=this.value+'°'"/><span class="val">0°</span></div><span class="ri-label">Scale</span><div class="ri-slider"><input type="range" min="50" max="130" value="100" oninput="this.nextElementSibling.textContent=this.value+'%'"/><span class="val">100%</span></div><span class="ri-label">Y Position</span><div class="ri-slider"><input type="range" min="-30" max="30" value="0" oninput="this.nextElementSibling.textContent=this.value"/><span class="val">0</span></div>`,`layer 1`)}
+  `;
+  // Populate bgs
+  const bgsEl = document.getElementById('ri-bgs');
+  if (bgsEl) BGS.forEach((b,bi) => { const d=document.createElement('div'); d.className=`ri-bg ${bi===S.bgIdx?'on':''}`; d.style.background=b.bg||`linear-gradient(160deg,${S.color}33,${S.color}66,#0D0D18)`; d.onclick=()=>{S.bgIdx=bi;renderRefine();}; bgsEl.appendChild(d); });
+  // Populate colors
+  const clsEl = document.getElementById('ri-cls');
+  if (clsEl) COLORS.forEach(c => { const d=document.createElement('div'); d.className=`ri-c ${c===S.color?'on':''}`; d.style.background=c; d.onclick=()=>{S.color=c;renderRefine();}; clsEl.appendChild(d); });
+}
+
+function renderSec(key, icon, name, hasActs, body, sub) {
+  const open = S.sections[key];
+  const acts = hasActs ? `<div class="ri-hdr-acts"><button class="ri-act">+</button><button class="ri-act">◑</button><button class="ri-act on">⊡</button><button class="ri-act">✥</button></div>` : '';
+  return `<div class="ri-sec ${open?'open':''}" data-k="${key}"><div class="ri-hdr" onclick="togSec('${key}')"><span class="ri-hdr-ic">${icon}</span><span class="ri-hdr-nm">${name}</span>${acts}<span class="ri-chv">▾</span></div>${sub?`<div class="ri-sub">${sub}</div>`:''}<div class="ri-body">${body}</div></div>`;
+}
+
+function togSec(k) { S.sections[k] = !S.sections[k]; renderRInsp(); }
+
+function togglePv() {
+  S.preview = !S.preview;
+  document.getElementById('refine-layout').classList.toggle('pv', S.preview);
+  const btn = document.getElementById('pvBtn');
+  btn.classList.toggle('on', S.preview);
+  btn.innerHTML = S.preview ? '✎ Edit' : '👁 Preview';
+}
+
+// Init
+go(0);
+</script>
+</body>
+</html>

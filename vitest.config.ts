@@ -3,8 +3,26 @@ import path from "path";
 
 export default defineConfig({
   test: {
-    environment: "node",
     globals: true,
+    environment: "jsdom",
+    setupFiles: ["./src/test-setup.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json-summary"],
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/**/*.test.{ts,tsx}",
+        "src/test-setup.ts",
+        "src/app/layout.tsx",
+        "src/app/globals.css",
+      ],
+      thresholds: {
+        lines: 70,
+        branches: 70,
+        functions: 70,
+      },
+    },
   },
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },

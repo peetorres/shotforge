@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shotforge — Refine Final: Focus + Side Inspector + App Store Strip</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #09090b; --surface: #111113; --surface-2: #1c1c1e; --surface-3: #27272a; --surface-4: #3f3f46;
+    --text: #fafafa; --text-2: #a1a1aa; --text-3: #52525b; --text-4: #71717a;
+    --indigo: #6366f1; --purple: #8b5cf6; --green: #22c55e; --orange: #f59e0b;
+    --red: #ef4444; --pink: #ec4899; --blue: #3b82f6; --cyan: #06b6d4;
+    --font: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; height: 100vh; overflow: hidden; }
+  button { font-family: var(--font); cursor: pointer; border: none; outline: none; }
+  input, textarea, select { font-family: var(--font); outline: none; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface-4); border-radius: 2px; }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes breathe { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+  @keyframes scaleIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+
+  /* ═══════════════════════════════════════════════════
+     LAYOUT: topbar | (canvas + inspector) | filmstrip
+     ═══════════════════════════════════════════════════ */
+  .app {
+    height: 100vh;
+    display: grid;
+    grid-template-rows: 48px 1fr auto;
+    grid-template-columns: 1fr 280px;
+    overflow: hidden;
+  }
+
+  /* ─── Top Bar (spans full width) ───────────────── */
+  .topbar {
+    grid-column: 1 / -1;
+    background: rgba(17,17,19,0.92);
+    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    display: flex; align-items: center; padding: 0 16px; gap: 12px;
+    z-index: 50;
+  }
+  .tb-brand { font-size: 14px; font-weight: 800; background: linear-gradient(135deg, var(--indigo), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .tb-sep { width: 1px; height: 20px; background: rgba(255,255,255,0.06); }
+  .tb-back { height: 28px; padding: 0 10px; border-radius: 7px; background: var(--surface-2); color: var(--text-3); font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; transition: all 0.12s; }
+  .tb-back:hover { background: var(--surface-3); color: var(--text-2); }
+  .tb-center { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .tb-slide-name { font-size: 13px; font-weight: 700; }
+  .tb-slide-counter { font-size: 11px; color: var(--text-3); font-weight: 500; }
+  .tb-right { display: flex; gap: 6px; }
+  .tb-btn { height: 28px; padding: 0 12px; border-radius: 7px; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 4px; transition: all 0.12s; }
+  .tb-btn.ghost { background: var(--surface-2); color: var(--text-3); }
+  .tb-btn.ghost:hover { background: var(--surface-3); color: var(--text-2); }
+  .tb-btn.export { background: var(--green); color: #000; }
+  .tb-btn.export:hover { background: #34d058; }
+
+  /* ─── Center: Main Canvas ──────────────────────── */
+  .canvas-area {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    overflow: hidden; position: relative;
+    background: radial-gradient(ellipse at 50% 40%, rgba(255,255,255,0.015) 0%, transparent 60%);
+  }
+
+  /* Arrow Navigation */
+  .arrow {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(255,255,255,0.05); backdrop-filter: blur(12px);
+    color: var(--text-3); font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10; transition: all 0.15s var(--ease);
+  }
+  .arrow:hover { background: rgba(255,255,255,0.1); color: var(--text); transform: translateY(-50%) scale(1.05); }
+  .arrow.left { left: 16px; }
+  .arrow.right { right: 16px; }
+
+  /* Main Slide Frame */
+  .main-frame {
+    height: 72%; max-height: 580px;
+    aspect-ratio: 1290/2796;
+    border-radius: 28px; position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 32px 80px rgba(0,0,0,0.4);
+    transition: all 0.35s var(--ease-out);
+    animation: scaleIn 0.3s var(--ease);
+  }
+  .mf-inner {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 12% 10% 0; position: relative; overflow: hidden;
+  }
+  .mf-inner .mf-hl {
+    font-size: 18px; font-weight: 800; text-align: center;
+    line-height: 1.15; letter-spacing: -0.5px;
+    margin-bottom: 5%; z-index: 2;
+  }
+  .mf-inner .mf-dev {
+    width: 55%; aspect-ratio: 9/19.5; border-radius: 12px;
+    overflow: hidden; z-index: 2;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    border: 2px solid rgba(255,255,255,0.06);
+  }
+  .mf-inner .mf-dev img { width: 100%; height: 100%; object-fit: cover; }
+  .mf-inner .mf-dev .mock {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+  }
+  .mf-inner .mf-glow {
+    position: absolute; width: 140%; height: 65%;
+    bottom: -5%; left: -20%; border-radius: 50%;
+    filter: blur(60px); opacity: 0.18; z-index: 1;
+  }
+
+  /* ─── Right: Inspector Panel ───────────────────── */
+  .inspector {
+    background: var(--surface);
+    border-left: 1px solid rgba(255,255,255,0.06);
+    overflow-y: auto;
+    grid-row: 2 / 3;
+  }
+
+  .ins-section { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .ins-title {
+    font-size: 10px; font-weight: 600; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .ins-title .ai-btn {
+    font-size: 9px; padding: 2px 6px;
+    background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.12));
+    border: 1px solid rgba(99,102,241,0.2); border-radius: 4px;
+    color: #818cf8; font-weight: 600; cursor: pointer;
+    letter-spacing: 0; text-transform: none;
+    transition: all 0.12s;
+  }
+  .ins-title .ai-btn:hover { background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2)); }
+
+  /* Layouts */
+  .ins-layouts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .ins-lo {
+    aspect-ratio: 9/19.5; background: var(--surface-2);
+    border: 1.5px solid transparent; border-radius: 5px;
+    cursor: pointer; transition: all 0.1s;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  }
+  .ins-lo:hover { background: var(--surface-3); }
+  .ins-lo.active { border-color: var(--indigo); }
+  .ins-lo-icon { font-size: 10px; }
+  .ins-lo-label { font-size: 7px; color: var(--text-3); font-weight: 700; }
+
+  /* Inputs */
+  .ins-label { font-size: 10px; color: var(--text-4); margin-bottom: 4px; display: block; font-weight: 500; }
+  .ins-inp {
+    width: 100%; background: var(--bg);
+    border: 1px solid rgba(255,255,255,0.06); border-radius: 6px;
+    padding: 7px 10px; font-size: 12px; color: var(--text);
+    transition: all 0.12s; margin-bottom: 8px;
+  }
+  .ins-inp:focus { border-color: var(--indigo); box-shadow: 0 0 0 2px rgba(99,102,241,0.1); }
+
+  /* Backgrounds */
+  .ins-bgs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+  .ins-bg {
+    aspect-ratio: 1; border-radius: 6px; cursor: pointer;
+    border: 2px solid transparent; transition: all 0.1s;
+  }
+  .ins-bg:hover { transform: scale(1.06); }
+  .ins-bg.active { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.08); }
+
+  /* Colors */
+  .ins-colors { display: flex; gap: 5px; flex-wrap: wrap; }
+  .ins-c {
+    width: 22px; height: 22px; border-radius: 6px; cursor: pointer;
+    border: 2px solid transparent; transition: all 0.1s;
+  }
+  .ins-c:hover { transform: scale(1.1); }
+  .ins-c.active { border-color: #fff; }
+
+  /* Font */
+  .ins-font {
+    width: 100%; background: var(--bg);
+    border: 1px solid rgba(255,255,255,0.06); border-radius: 6px;
+    padding: 6px 10px; font-size: 12px; color: var(--text); appearance: none;
+  }
+
+  /* Sliders */
+  .ins-slider { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .ins-slider input[type="range"] { flex: 1; accent-color: var(--indigo); height: 3px; }
+  .ins-slider .val { font-size: 10px; color: var(--text-4); min-width: 28px; text-align: right; font-family: 'SF Mono', monospace; }
+
+  /* ═══════════════════════════════════════════════════
+     BOTTOM: App Store-style Filmstrip
+     ═══════════════════════════════════════════════════ */
+  .filmstrip-area {
+    grid-column: 1 / -1;
+    background: var(--surface);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    transition: all 0.35s var(--ease-out);
+  }
+
+  /* Toggle header */
+  .fs-header {
+    display: flex; align-items: center; padding: 8px 16px; gap: 10px;
+    cursor: pointer; user-select: none;
+    transition: all 0.12s;
+  }
+  .fs-header:hover { background: rgba(255,255,255,0.02); }
+  .fs-label { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.5px; }
+  .fs-badge { font-size: 10px; color: var(--text-4); }
+  .fs-chevron { margin-left: auto; font-size: 12px; color: var(--text-4); transition: transform 0.25s var(--ease); }
+  .filmstrip-area.expanded .fs-chevron { transform: rotate(180deg); }
+  .fs-expand-hint { font-size: 10px; color: var(--text-4); margin-left: auto; }
+
+  /* Strip content */
+  .fs-strip {
+    display: flex; gap: 10px; padding: 0 16px 10px;
+    overflow-x: auto; align-items: flex-end;
+    transition: all 0.35s var(--ease-out);
+  }
+
+  /* Collapsed: small thumbs */
+  .fs-card {
+    flex-shrink: 0;
+    border-radius: 10px; overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.25s var(--ease-out);
+    position: relative;
+  }
+  /* Default collapsed size */
+  .fs-card { width: 56px; aspect-ratio: 1290/2796; }
+  .fs-card:hover { transform: translateY(-2px); }
+  .fs-card.active {
+    border-color: var(--indigo);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.15), 0 8px 24px rgba(99,102,241,0.1);
+  }
+
+  /* Expanded: App Store-like preview */
+  .filmstrip-area.expanded .fs-card {
+    width: 140px;
+  }
+
+  .fs-card-inner {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 12% 8% 0; position: relative; overflow: hidden;
+  }
+  .fs-card-inner .fs-hl {
+    font-weight: 800; text-align: center; line-height: 1.15;
+    margin-bottom: 4%; z-index: 2;
+    transition: font-size 0.25s var(--ease-out);
+  }
+  /* Collapsed hl size */
+  .fs-card .fs-hl { font-size: 4px; letter-spacing: -0.1px; }
+  .filmstrip-area.expanded .fs-card .fs-hl { font-size: 8px; letter-spacing: -0.2px; }
+
+  .fs-card-inner .fs-dev {
+    width: 55%; aspect-ratio: 9/19.5; border-radius: 4px;
+    overflow: hidden; z-index: 2;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .filmstrip-area.expanded .fs-card-inner .fs-dev { border-radius: 6px; }
+  .fs-card-inner .fs-dev .mock {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fs-card-inner .fs-glow {
+    position: absolute; width: 130%; height: 50%;
+    bottom: -5%; left: -15%; border-radius: 50%;
+    filter: blur(20px); opacity: 0.15; z-index: 1;
+  }
+
+  /* Slide number badge */
+  .fs-num {
+    position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+    font-size: 8px; font-weight: 700; color: var(--text-4);
+    background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+    padding: 1px 5px; border-radius: 3px; z-index: 5;
+  }
+  .fs-card.active .fs-num { color: var(--indigo); }
+
+  /* App Store label under expanded cards */
+  .fs-card-label {
+    position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
+    font-size: 8px; color: var(--text-4); white-space: nowrap;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .filmstrip-area.expanded .fs-card-label { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ═══ TOP BAR ════════════════════════════════════ -->
+  <div class="topbar">
+    <div class="tb-brand">Shotforge</div>
+    <div class="tb-sep"></div>
+    <button class="tb-back" onclick="alert('Would go back to Choose variants')">← Variants</button>
+    <div class="tb-center">
+      <span class="tb-slide-name" id="tb-name">Hero</span>
+      <span class="tb-slide-counter" id="tb-counter">1 / 6</span>
+    </div>
+    <div class="tb-right">
+      <button class="tb-btn ghost">⟳ Regenerate</button>
+      <button class="tb-btn export">⬇ Export ZIP</button>
+    </div>
+  </div>
+
+  <!-- ═══ CANVAS ═════════════════════════════════════ -->
+  <div class="canvas-area" id="canvas-area">
+    <button class="arrow left" id="arr-l">‹</button>
+    <button class="arrow right" id="arr-r">›</button>
+    <div class="main-frame" id="main-frame"></div>
+  </div>
+
+  <!-- ═══ INSPECTOR (right) ══════════════════════════ -->
+  <div class="inspector" id="inspector">
+    <!-- Layout -->
+    <div class="ins-section">
+      <div class="ins-title">Layout</div>
+      <div class="ins-layouts" id="ins-layouts">
+        <div class="ins-lo active" data-lo="hero"><div class="ins-lo-icon">🏆</div><div class="ins-lo-label">HERO</div></div>
+        <div class="ins-lo" data-lo="single"><div class="ins-lo-icon">📱</div><div class="ins-lo-label">SINGLE</div></div>
+        <div class="ins-lo" data-lo="dual"><div class="ins-lo-icon">📱📱</div><div class="ins-lo-label">DUAL</div></div>
+        <div class="ins-lo" data-lo="stats"><div class="ins-lo-icon">📊</div><div class="ins-lo-label">STATS</div></div>
+      </div>
+    </div>
+
+    <!-- Copy -->
+    <div class="ins-section">
+      <div class="ins-title">Copy <span class="ai-btn">✦ AI Generate</span></div>
+      <span class="ins-label">Headline</span>
+      <textarea class="ins-inp" rows="2" style="resize:none" id="ins-hl"></textarea>
+      <span class="ins-label">Subtitle</span>
+      <input class="ins-inp" id="ins-sub" placeholder="Optional subtitle" />
+    </div>
+
+    <!-- Background -->
+    <div class="ins-section">
+      <div class="ins-title">Background</div>
+      <div class="ins-bgs" id="ins-bgs"></div>
+    </div>
+
+    <!-- Brand Color -->
+    <div class="ins-section">
+      <div class="ins-title">Brand Color</div>
+      <div class="ins-colors" id="ins-colors"></div>
+    </div>
+
+    <!-- Font -->
+    <div class="ins-section">
+      <div class="ins-title">Font</div>
+      <select class="ins-font" id="ins-font">
+        <option>SF Pro Display</option>
+        <option selected>Inter</option>
+        <option>Poppins</option>
+        <option>Montserrat</option>
+        <option>Space Grotesk</option>
+      </select>
+    </div>
+
+    <!-- Device -->
+    <div class="ins-section">
+      <div class="ins-title">Device</div>
+      <span class="ins-label">Rotation</span>
+      <div class="ins-slider">
+        <input type="range" min="-20" max="20" value="0" id="sl-rot" />
+        <span class="val" id="sl-rot-val">0°</span>
+      </div>
+      <span class="ins-label">Scale</span>
+      <div class="ins-slider">
+        <input type="range" min="50" max="120" value="100" id="sl-scale" />
+        <span class="val" id="sl-scale-val">100%</span>
+      </div>
+      <span class="ins-label">Y Offset</span>
+      <div class="ins-slider">
+        <input type="range" min="-20" max="30" value="0" id="sl-offset" />
+        <span class="val" id="sl-offset-val">0</span>
+      </div>
+    </div>
+
+    <!-- Screenshot select -->
+    <div class="ins-section">
+      <div class="ins-title">Screenshot</div>
+      <select class="ins-font" id="ins-screenshot">
+        <option>Screen 1 — Dashboard</option>
+        <option>Screen 2 — Home</option>
+        <option>Screen 3 — Profile</option>
+        <option>Screen 4 — Feature</option>
+        <option>Screen 5 — Feed</option>
+        <option>Screen 6 — Onboard</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ═══ FILMSTRIP (bottom, spans full width) ═══════ -->
+  <div class="filmstrip-area" id="filmstrip-area">
+    <div class="fs-header" id="fs-header">
+      <span class="fs-label">App Store Preview</span>
+      <span class="fs-badge" id="fs-badge">6 slides</span>
+      <span class="fs-expand-hint" id="fs-hint">Click to expand</span>
+      <span class="fs-chevron">▲</span>
+    </div>
+    <div class="fs-strip" id="fs-strip"></div>
+  </div>
+</div>
+
+<script>
+// ─── Config ─────────────────────────────────────
+const COLOR_DEFAULT = '#6366f1';
+const COLORS = ['#6366f1','#3b82f6','#06b6d4','#22c55e','#f59e0b','#ef4444','#ec4899','#8b5cf6'];
+const BGS = [
+  { bg: 'linear-gradient(160deg,#0D0D18,#1a1033)', text: '#fff', mockBg: '#1c1c1e', mockC: '#555' },
+  { bg: 'linear-gradient(160deg,#F5F5F7,#E8E8ED)', text: '#1d1d1f', mockBg: '#e5e5ea', mockC: '#888' },
+  { bg: null, text: '#fff', mockBg: '#1c1c1e', mockC: '#555' }, // brand gradient
+  { bg: 'linear-gradient(160deg,#000,#0a0a1a)', text: '#fff', mockBg: '#111', mockC: '#444' },
+  { bg: 'linear-gradient(135deg,#667eea,#764ba2)', text: '#fff', mockBg: '#2d2060', mockC: '#8875c0' },
+  { bg: 'linear-gradient(135deg,#f093fb,#f5576c)', text: '#fff', mockBg: '#4a1030', mockC: '#c06080' },
+  { bg: 'linear-gradient(135deg,#4facfe,#00f2fe)', text: '#fff', mockBg: '#0a2a4a', mockC: '#4090c0' },
+  { bg: 'linear-gradient(135deg,#43e97b,#38f9d7)', text: '#1d1d1f', mockBg: '#d0f0e0', mockC: '#5a9' },
+];
+
+const HEADLINES = [
+  'Your app,\n**elevated**',
+  '**Smart** learning\nmade simple',
+  'Track your\n**progress**',
+  'AI-powered\n**insights**',
+  'Daily\n**challenges**',
+  'Join **thousands**\nof learners',
+];
+const TYPES = ['Hero','Feature','Feature','Feature','Feature','Social Proof'];
+const PLACEHOLDERS = ['📊','🏠','👤','⚡','📱','🎯'];
+
+// ─── State ──────────────────────────────────────
+let st = {
+  active: 0,
+  color: COLOR_DEFAULT,
+  bgIdx: 0,
+  expanded: false,
+};
+
+function getBg(idx) {
+  const b = BGS[idx || st.bgIdx];
+  return b.bg || `linear-gradient(160deg, ${st.color}22 0%, ${st.color}55 50%, #0D0D18 100%)`;
+}
+function getTextColor() { return BGS[st.bgIdx].text; }
+function getMockBg() { return BGS[st.bgIdx].mockBg; }
+function getMockC() { return BGS[st.bgIdx].mockC; }
+
+function highlight(text) {
+  return text.replace(/\*\*(.+?)\*\*/g, `<span style="color:${st.color}">$1</span>`).replace(/\n/g, '<br>');
+}
+
+// ─── Render: Main Frame ─────────────────────────
+function renderMain() {
+  const frame = document.getElementById('main-frame');
+  frame.style.background = getBg();
+
+  const hl = highlight(HEADLINES[st.active]);
+  const tc = getTextColor();
+  const mb = getMockBg();
+  const mc = getMockC();
+  const ph = PLACEHOLDERS[st.active];
+
+  frame.innerHTML = `
+    <div class="mf-inner">
+      <div class="mf-hl" style="color:${tc}">${hl}</div>
+      <div class="mf-dev"><div class="mock" style="background:${mb};color:${mc};font-size:24px">${ph}</div></div>
+      <div class="mf-glow" style="background:${st.color}"></div>
+    </div>
+  `;
+
+  // Top bar
+  document.getElementById('tb-name').textContent = TYPES[st.active];
+  document.getElementById('tb-counter').textContent = `${st.active + 1} / 6`;
+
+  // Inspector
+  document.getElementById('ins-hl').value = HEADLINES[st.active].replace(/\*\*/g, '');
+  document.getElementById('ins-screenshot').selectedIndex = st.active;
+}
+
+// ─── Render: Filmstrip ──────────────────────────
+function renderFilmstrip() {
+  const strip = document.getElementById('fs-strip');
+  strip.innerHTML = '';
+
+  for (let i = 0; i < 6; i++) {
+    const card = document.createElement('div');
+    card.className = `fs-card ${i === st.active ? 'active' : ''}`;
+    card.style.background = getBg();
+    card.onclick = () => { st.active = i; renderAll(); };
+
+    const tc = getTextColor();
+    const mb = getMockBg();
+    const mc = getMockC();
+    const hl = highlight(HEADLINES[i]);
+
+    card.innerHTML = `
+      <div class="fs-card-inner">
+        <div class="fs-hl" style="color:${tc}">${hl}</div>
+        <div class="fs-dev"><div class="mock" style="background:${mb};color:${mc};font-size:${st.expanded ? '10px' : '5px'}">${PLACEHOLDERS[i]}</div></div>
+        <div class="fs-glow" style="background:${st.color}"></div>
+      </div>
+      <div class="fs-num">${i + 1}</div>
+    `;
+    strip.appendChild(card);
+  }
+}
+
+// ─── Render: Inspector Background Presets ────────
+function renderInsBgs() {
+  const el = document.getElementById('ins-bgs');
+  el.innerHTML = '';
+  BGS.forEach((b, i) => {
+    const d = document.createElement('div');
+    d.className = `ins-bg ${i === st.bgIdx ? 'active' : ''}`;
+    d.style.background = b.bg || `linear-gradient(160deg, ${st.color}33, ${st.color}66, #0D0D18)`;
+    d.onclick = () => { st.bgIdx = i; renderAll(); };
+    el.appendChild(d);
+  });
+}
+
+// ─── Render: Inspector Colors ───────────────────
+function renderInsColors() {
+  const el = document.getElementById('ins-colors');
+  el.innerHTML = '';
+  COLORS.forEach(c => {
+    const d = document.createElement('div');
+    d.className = `ins-c ${c === st.color ? 'active' : ''}`;
+    d.style.background = c;
+    d.onclick = () => { st.color = c; renderAll(); };
+    el.appendChild(d);
+  });
+}
+
+// ─── Render All ─────────────────────────────────
+function renderAll() {
+  renderMain();
+  renderFilmstrip();
+  renderInsBgs();
+  renderInsColors();
+}
+
+// ─── Navigation ─────────────────────────────────
+document.getElementById('arr-l').onclick = () => { st.active = Math.max(0, st.active - 1); renderAll(); };
+document.getElementById('arr-r').onclick = () => { st.active = Math.min(5, st.active + 1); renderAll(); };
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  if (e.key === 'ArrowLeft') { st.active = Math.max(0, st.active - 1); renderAll(); }
+  if (e.key === 'ArrowRight') { st.active = Math.min(5, st.active + 1); renderAll(); }
+});
+
+// ─── Filmstrip Toggle ───────────────────────────
+document.getElementById('fs-header').onclick = () => {
+  st.expanded = !st.expanded;
+  const area = document.getElementById('filmstrip-area');
+  area.classList.toggle('expanded', st.expanded);
+  document.getElementById('fs-hint').textContent = st.expanded ? 'Click to collapse' : 'Click to expand';
+  renderFilmstrip();
+};
+
+// ─── Layout Selection ───────────────────────────
+document.getElementById('ins-layouts').addEventListener('click', (e) => {
+  const lo = e.target.closest('.ins-lo');
+  if (!lo) return;
+  document.querySelectorAll('.ins-lo').forEach(l => l.classList.remove('active'));
+  lo.classList.add('active');
+});
+
+// ─── Sliders ────────────────────────────────────
+const slRot = document.getElementById('sl-rot');
+const slScale = document.getElementById('sl-scale');
+const slOffset = document.getElementById('sl-offset');
+slRot.oninput = () => { document.getElementById('sl-rot-val').textContent = slRot.value + '°'; };
+slScale.oninput = () => { document.getElementById('sl-scale-val').textContent = slScale.value + '%'; };
+slOffset.oninput = () => { document.getElementById('sl-offset-val').textContent = slOffset.value; };
+
+// ─── Init ───────────────────────────────────────
+renderAll();
+</script>
+</body>
+</html>

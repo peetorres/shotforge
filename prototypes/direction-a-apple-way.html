@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shotforge — Direction A: The Apple Way</title>
+<style>
+  /* ─── Reset & Base ─────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #000000; --surface: #1c1c1e; --surface-2: #2c2c2e;
+    --text: #f5f5f7; --text-2: #98989d; --text-3: #48484a;
+    --blue: #0A84FF; --green: #30D158; --orange: #FF9F0A;
+    --purple: #BF5AF2; --red: #FF453A;
+    --radius: 14px; --radius-sm: 10px;
+    --font: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  html { font-size: 16px; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+  button { font-family: var(--font); cursor: pointer; border: none; outline: none; }
+  input, textarea { font-family: var(--font); outline: none; }
+
+  /* ─── Utility ──────────────────────────────────── */
+  .fade-in { animation: fadeIn 0.4s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .slide-up { animation: slideUp 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ─── Navigation ───────────────────────────────── */
+  .nav { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: rgba(0,0,0,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; padding: 0 24px; z-index: 100; }
+  .nav-brand { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px; }
+  .nav-brand .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--blue); }
+  .nav-steps { position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 0; background: var(--surface); border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.06); }
+  .nav-step { padding: 6px 18px; font-size: 12px; font-weight: 600; color: var(--text-3); transition: var(--transition); position: relative; }
+  .nav-step.active { color: var(--text); background: var(--surface-2); }
+  .nav-step.done { color: var(--green); }
+  .nav-step.done::before { content: "✓ "; }
+
+  /* ─── Screens Container ────────────────────────── */
+  .screen { display: none; min-height: 100vh; padding-top: 56px; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* ─── Step 1: Describe ─────────────────────────── */
+  .describe-screen { align-items: center; justify-content: center; padding: 80px 24px; }
+  .describe-card { max-width: 520px; width: 100%; }
+  .describe-card h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; letter-spacing: -1px; line-height: 1.1; margin-bottom: 8px; }
+  .describe-card h1 span { color: var(--blue); }
+  .describe-card p.sub { color: var(--text-2); font-size: 16px; margin-bottom: 40px; letter-spacing: 0.2px; }
+  .field { margin-bottom: 24px; }
+  .field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .field input, .field textarea { width: 100%; background: var(--surface); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); padding: 14px 16px; font-size: 16px; color: var(--text); transition: var(--transition); }
+  .field input:focus, .field textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(10,132,255,0.15); }
+  .field textarea { resize: none; line-height: 1.5; }
+  .field .hint { font-size: 12px; color: var(--text-3); margin-top: 6px; }
+
+  .color-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .color-swatch { width: 40px; height: 40px; border-radius: var(--radius-sm); cursor: pointer; border: 2.5px solid transparent; transition: var(--transition); }
+  .color-swatch:hover { transform: scale(1.1); }
+  .color-swatch.active { border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.15); }
+
+  .btn-primary { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 56px; background: var(--blue); color: #fff; border-radius: var(--radius); font-size: 16px; font-weight: 700; letter-spacing: -0.2px; margin-top: 36px; transition: var(--transition); box-shadow: 0 8px 32px rgba(10,132,255,0.25); }
+  .btn-primary:hover { background: #1A8FFF; transform: translateY(-1px); box-shadow: 0 12px 40px rgba(10,132,255,0.35); }
+  .btn-primary:disabled { background: var(--surface); color: var(--text-3); cursor: not-allowed; box-shadow: none; transform: none; }
+
+  /* ─── Step 2: Upload ───────────────────────────── */
+  .upload-screen { align-items: center; padding: 80px 24px; }
+  .upload-card { max-width: 640px; width: 100%; }
+  .upload-card h2 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
+  .upload-card .sub { color: var(--text-2); font-size: 15px; margin-bottom: 32px; }
+
+  .dropzone { border: 2px dashed rgba(255,255,255,0.1); border-radius: 20px; padding: 48px 24px; text-align: center; cursor: pointer; transition: var(--transition); position: relative; overflow: hidden; }
+  .dropzone:hover, .dropzone.dragging { border-color: var(--blue); background: rgba(10,132,255,0.04); }
+  .dropzone .icon { font-size: 48px; margin-bottom: 16px; opacity: 0.6; }
+  .dropzone h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .dropzone p { font-size: 13px; color: var(--text-3); }
+  .dropzone input { display: none; }
+
+  .file-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
+  .file-thumb { aspect-ratio: 9/19.5; background: var(--surface); border-radius: var(--radius-sm); overflow: hidden; position: relative; border: 1.5px solid rgba(255,255,255,0.06); transition: var(--transition); }
+  .file-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .file-thumb .remove { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; background: rgba(0,0,0,0.7); border-radius: 50%; color: var(--red); font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: var(--transition); backdrop-filter: blur(8px); }
+  .file-thumb:hover .remove { opacity: 1; }
+  .file-thumb .num { position: absolute; bottom: 6px; left: 6px; width: 20px; height: 20px; background: rgba(0,0,0,0.6); border-radius: 5px; font-size: 10px; font-weight: 700; color: var(--text-2); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+
+  .upload-actions { display: flex; gap: 12px; margin-top: 32px; }
+  .btn-back { height: 56px; padding: 0 28px; background: var(--surface); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius); font-size: 15px; font-weight: 600; color: var(--text-2); transition: var(--transition); }
+  .btn-back:hover { background: var(--surface-2); color: var(--text); }
+
+  /* ─── Step 3: Generate (Loading) ───────────────── */
+  .generate-screen { align-items: center; justify-content: center; padding: 80px 24px; text-align: center; }
+  .generate-spinner { width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--surface-2); border-top-color: var(--blue); animation: spin 0.8s linear infinite; margin: 0 auto 24px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .generate-screen h2 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+  .generate-screen p { color: var(--text-2); font-size: 15px; }
+  .gen-steps { margin-top: 32px; display: flex; flex-direction: column; gap: 12px; text-align: left; max-width: 300px; margin-left: auto; margin-right: auto; }
+  .gen-step { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--text-3); }
+  .gen-step.active { color: var(--text); }
+  .gen-step.done { color: var(--green); }
+  .gen-step .indicator { width: 20px; height: 20px; border-radius: 50%; background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; }
+  .gen-step.active .indicator { background: var(--blue); }
+  .gen-step.done .indicator { background: var(--green); }
+
+  /* ─── Step 4: Choose ───────────────────────────── */
+  .choose-screen { padding: 80px 24px 40px; }
+  .choose-header { text-align: center; margin-bottom: 40px; }
+  .choose-header h2 { font-size: 32px; font-weight: 800; letter-spacing: -1px; margin-bottom: 6px; }
+  .choose-header p { color: var(--text-2); font-size: 15px; }
+
+  .variants-grid { display: flex; flex-direction: column; gap: 48px; max-width: 1200px; margin: 0 auto; }
+  .variant-card { background: var(--surface); border-radius: 20px; padding: 28px; border: 2px solid transparent; transition: var(--transition); cursor: pointer; }
+  .variant-card:hover { border-color: rgba(255,255,255,0.1); transform: translateY(-2px); }
+  .variant-card.selected { border-color: var(--blue); box-shadow: 0 0 0 4px rgba(10,132,255,0.15); }
+  .variant-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .variant-name { font-size: 18px; font-weight: 700; }
+  .variant-tag { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 4px 10px; border-radius: 6px; }
+  .variant-tag.dark { background: rgba(191,90,242,0.15); color: var(--purple); }
+  .variant-tag.light { background: rgba(48,209,88,0.15); color: var(--green); }
+  .variant-tag.gradient { background: rgba(255,159,10,0.15); color: var(--orange); }
+
+  .slides-strip { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+  .slides-strip::-webkit-scrollbar { height: 4px; }
+  .slides-strip::-webkit-scrollbar-track { background: transparent; }
+  .slides-strip::-webkit-scrollbar-thumb { background: var(--surface-2); border-radius: 2px; }
+  .slide-preview { flex-shrink: 0; width: 140px; aspect-ratio: 1290/2796; border-radius: 12px; overflow: hidden; scroll-snap-align: start; position: relative; }
+
+  .select-variant-btn { margin-top: 16px; width: 100%; height: 44px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; transition: var(--transition); }
+  .variant-card:not(.selected) .select-variant-btn { background: var(--surface-2); color: var(--text-2); }
+  .variant-card:not(.selected) .select-variant-btn:hover { background: rgba(10,132,255,0.15); color: var(--blue); }
+  .variant-card.selected .select-variant-btn { background: var(--blue); color: #fff; }
+
+  /* ─── Step 5: Export ───────────────────────────── */
+  .export-screen { align-items: center; justify-content: center; padding: 80px 24px; text-align: center; }
+  .export-icon { font-size: 64px; margin-bottom: 24px; }
+  .export-screen h2 { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+  .export-screen p { color: var(--text-2); font-size: 15px; margin-bottom: 32px; max-width: 400px; }
+  .export-sizes { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; justify-content: center; }
+  .size-chip { padding: 8px 16px; background: var(--surface); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; font-size: 13px; color: var(--text-2); font-weight: 500; }
+  .size-chip.active { border-color: var(--blue); color: var(--blue); background: rgba(10,132,255,0.08); }
+  .btn-export { display: inline-flex; align-items: center; gap: 10px; height: 56px; padding: 0 40px; background: var(--green); color: #000; border-radius: var(--radius); font-size: 16px; font-weight: 700; transition: var(--transition); box-shadow: 0 8px 32px rgba(48,209,88,0.25); }
+  .btn-export:hover { background: #3DE065; transform: translateY(-1px); }
+
+  /* ─── Simulated Screenshots ────────────────────── */
+  .sim-slide { width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 12% 8% 0; overflow: hidden; }
+  .sim-slide .headline { font-size: 9px; font-weight: 800; text-align: center; line-height: 1.2; letter-spacing: -0.3px; margin-bottom: 6%; z-index: 2; }
+  .sim-slide .device-mock { width: 65%; aspect-ratio: 9/19.5; border-radius: 8px; position: relative; overflow: hidden; z-index: 2; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+  .sim-slide .device-mock img { width: 100%; height: 100%; object-fit: cover; }
+  .sim-slide .glow { position: absolute; width: 120%; height: 60%; bottom: 0; left: -10%; border-radius: 50%; filter: blur(40px); opacity: 0.3; z-index: 1; }
+</style>
+</head>
+<body>
+
+<!-- ─── Navigation ─────────────────────────────── -->
+<nav class="nav">
+  <div class="nav-brand"><span class="dot"></span> Shotforge</div>
+  <div class="nav-steps" id="nav-steps">
+    <div class="nav-step active" data-step="0">Describe</div>
+    <div class="nav-step" data-step="1">Upload</div>
+    <div class="nav-step" data-step="2">Generate</div>
+    <div class="nav-step" data-step="3">Choose</div>
+    <div class="nav-step" data-step="4">Export</div>
+  </div>
+</nav>
+
+<!-- ─── Step 1: Describe ───────────────────────── -->
+<section class="screen active describe-screen" id="screen-0">
+  <div class="describe-card fade-in">
+    <h1>Describe your <span>app</span></h1>
+    <p class="sub">Tell us about your product. AI handles the rest.</p>
+
+    <div class="field">
+      <label>App Name</label>
+      <input id="app-name" type="text" placeholder="e.g. Sensei" autocomplete="off" />
+    </div>
+
+    <div class="field">
+      <label>What does your app do?</label>
+      <textarea id="app-desc" rows="3" placeholder="e.g. Gamified learning platform for business and entrepreneurship, with daily challenges, streaks, and AI-powered personalized paths."></textarea>
+      <div class="hint">Be specific. This powers the AI copy generation for your screenshots.</div>
+    </div>
+
+    <div class="field">
+      <label>Brand Color</label>
+      <div class="color-row" id="color-row">
+        <div class="color-swatch active" style="background:#6366F1" data-color="#6366F1"></div>
+        <div class="color-swatch" style="background:#0A84FF" data-color="#0A84FF"></div>
+        <div class="color-swatch" style="background:#30D158" data-color="#30D158"></div>
+        <div class="color-swatch" style="background:#FF9F0A" data-color="#FF9F0A"></div>
+        <div class="color-swatch" style="background:#BF5AF2" data-color="#BF5AF2"></div>
+        <div class="color-swatch" style="background:#FF453A" data-color="#FF453A"></div>
+        <div class="color-swatch" style="background:#FF375F" data-color="#FF375F"></div>
+        <div class="color-swatch" style="background:#64D2FF" data-color="#64D2FF"></div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="btn-to-upload" disabled>
+      Continue
+      <span style="font-size:18px">→</span>
+    </button>
+  </div>
+</section>
+
+<!-- ─── Step 2: Upload ─────────────────────────── -->
+<section class="screen upload-screen" id="screen-1">
+  <div class="upload-card fade-in">
+    <h2>Upload your screenshots</h2>
+    <p class="sub">Drop up to 6 screens. We'll generate 3 complete variations for you to choose from.</p>
+
+    <div class="dropzone" id="dropzone">
+      <div class="icon">📱</div>
+      <h3>Drop screenshots here</h3>
+      <p>or click to browse — PNG/JPG, up to 6 files</p>
+      <input type="file" id="file-input" multiple accept="image/png,image/jpeg" />
+    </div>
+
+    <div class="file-grid" id="file-grid"></div>
+
+    <div class="upload-actions">
+      <button class="btn-back" onclick="goToStep(0)">← Back</button>
+      <button class="btn-primary" id="btn-to-generate" disabled style="flex:1">
+        Generate 3 variations →
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Step 3: Generate ───────────────────────── -->
+<section class="screen generate-screen" id="screen-2">
+  <div class="fade-in">
+    <div class="generate-spinner"></div>
+    <h2>Crafting your screenshots</h2>
+    <p>AI is generating 3 unique variations</p>
+    <div class="gen-steps" id="gen-steps">
+      <div class="gen-step active"><div class="indicator">1</div> Analyzing your screenshots</div>
+      <div class="gen-step"><div class="indicator">2</div> Generating copy & layouts</div>
+      <div class="gen-step"><div class="indicator">3</div> Rendering Variation A — Dark</div>
+      <div class="gen-step"><div class="indicator">4</div> Rendering Variation B — Light</div>
+      <div class="gen-step"><div class="indicator">5</div> Rendering Variation C — Gradient</div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── Step 4: Choose ─────────────────────────── -->
+<section class="screen choose-screen" id="screen-3">
+  <div class="choose-header fade-in">
+    <h2>Pick your favorite</h2>
+    <p>3 variations generated. Scroll each strip to see all 6 slides.</p>
+  </div>
+
+  <div class="variants-grid" id="variants-grid"></div>
+
+  <div style="text-align:center; margin-top:40px;">
+    <button class="btn-primary" id="btn-to-export" disabled style="max-width:400px; margin:0 auto">
+      Export selected variation →
+    </button>
+  </div>
+</section>
+
+<!-- ─── Step 5: Export ─────────────────────────── -->
+<section class="screen export-screen" id="screen-4">
+  <div class="fade-in">
+    <div class="export-icon">✅</div>
+    <h2>Ready to download</h2>
+    <p>Your screenshots are rendered at App Store resolution for all required sizes.</p>
+    <div class="export-sizes">
+      <div class="size-chip active">6.9" — 1320×2868</div>
+      <div class="size-chip active">6.7" — 1290×2796</div>
+      <div class="size-chip active">6.5" — 1284×2778</div>
+      <div class="size-chip active">6.1" — 1179×2556</div>
+    </div>
+    <button class="btn-export" onclick="alert('This is a prototype — export would download a ZIP with all sizes.')">
+      ⬇ Download ZIP
+    </button>
+    <p style="font-size:12px; color:var(--text-3); margin-top:16px;">6 slides × 4 sizes = 24 screenshots</p>
+  </div>
+</section>
+
+<script>
+// ─── State ──────────────────────────────────────
+let currentStep = 0;
+let selectedColor = '#6366F1';
+let uploadedFiles = [];
+let selectedVariant = null;
+
+// ─── Navigation ─────────────────────────────────
+function goToStep(step) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(`screen-${step}`).classList.add('active');
+  document.querySelectorAll('.nav-step').forEach((s, i) => {
+    s.classList.remove('active', 'done');
+    if (i < step) s.classList.add('done');
+    if (i === step) s.classList.add('active');
+  });
+  currentStep = step;
+  window.scrollTo(0, 0);
+}
+
+// ─── Step 1: Describe ───────────────────────────
+const appNameInput = document.getElementById('app-name');
+const appDescInput = document.getElementById('app-desc');
+const btnToUpload = document.getElementById('btn-to-upload');
+
+function validateDescribe() {
+  btnToUpload.disabled = !(appNameInput.value.trim() && appDescInput.value.trim());
+}
+appNameInput.addEventListener('input', validateDescribe);
+appDescInput.addEventListener('input', validateDescribe);
+btnToUpload.addEventListener('click', () => goToStep(1));
+
+// Color selection
+document.getElementById('color-row').addEventListener('click', (e) => {
+  const swatch = e.target.closest('.color-swatch');
+  if (!swatch) return;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+  swatch.classList.add('active');
+  selectedColor = swatch.dataset.color;
+});
+
+// ─── Step 2: Upload ─────────────────────────────
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('file-input');
+const fileGrid = document.getElementById('file-grid');
+const btnToGenerate = document.getElementById('btn-to-generate');
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragging'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragging'));
+dropzone.addEventListener('drop', (e) => { e.preventDefault(); dropzone.classList.remove('dragging'); handleFiles(e.dataTransfer.files); });
+fileInput.addEventListener('change', (e) => { handleFiles(e.target.files); e.target.value = ''; });
+
+function handleFiles(files) {
+  const newFiles = Array.from(files).filter(f => f.type.startsWith('image/')).slice(0, 6 - uploadedFiles.length);
+  uploadedFiles = [...uploadedFiles, ...newFiles].slice(0, 6);
+  renderFileGrid();
+}
+
+function removeFile(index) {
+  uploadedFiles.splice(index, 1);
+  renderFileGrid();
+}
+
+function renderFileGrid() {
+  fileGrid.innerHTML = '';
+  uploadedFiles.forEach((file, i) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'file-thumb';
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    const remove = document.createElement('div');
+    remove.className = 'remove';
+    remove.textContent = '✕';
+    remove.onclick = (e) => { e.stopPropagation(); removeFile(i); };
+    const num = document.createElement('div');
+    num.className = 'num';
+    num.textContent = i + 1;
+    thumb.append(img, remove, num);
+    fileGrid.appendChild(thumb);
+  });
+  btnToGenerate.disabled = uploadedFiles.length < 1;
+  btnToGenerate.textContent = uploadedFiles.length > 0
+    ? `Generate 3 variations from ${uploadedFiles.length} screenshot${uploadedFiles.length > 1 ? 's' : ''} →`
+    : 'Generate 3 variations →';
+  dropzone.style.display = uploadedFiles.length >= 6 ? 'none' : '';
+}
+
+btnToGenerate.addEventListener('click', () => {
+  goToStep(2);
+  simulateGeneration();
+});
+
+// ─── Step 3: Generate ───────────────────────────
+function simulateGeneration() {
+  const steps = document.querySelectorAll('#gen-steps .gen-step');
+  let i = 0;
+  const interval = setInterval(() => {
+    if (i > 0) { steps[i - 1].classList.remove('active'); steps[i - 1].classList.add('done'); steps[i - 1].querySelector('.indicator').textContent = '✓'; }
+    if (i < steps.length) { steps[i].classList.add('active'); }
+    else { clearInterval(interval); setTimeout(() => { goToStep(3); renderVariants(); }, 600); }
+    i++;
+  }, 800);
+}
+
+// ─── Step 4: Choose ─────────────────────────────
+const VARIANTS = [
+  { name: 'Midnight', tag: 'dark', tagClass: 'dark', bg: 'linear-gradient(160deg, #0D0D18 0%, #1a1033 100%)', textColor: '#fff' },
+  { name: 'Clean', tag: 'light', tagClass: 'light', bg: 'linear-gradient(160deg, #F5F5F7 0%, #E8E8ED 100%)', textColor: '#1d1d1f' },
+  { name: 'Vivid', tag: 'gradient', tagClass: 'gradient', bg: `linear-gradient(160deg, ${selectedColor}22 0%, ${selectedColor}44 50%, #0D0D18 100%)`, textColor: '#fff' },
+];
+
+const SLIDE_TYPES = ['hero', 'feature', 'feature', 'feature', 'feature', 'feature'];
+const HEADLINES = [
+  ['Your app,', '**elevated**'],
+  ['**Smart** learning', 'made simple'],
+  ['Track your', '**progress**'],
+  ['AI-powered', '**insights**'],
+  ['Daily', '**challenges**'],
+  ['Join **thousands**', 'of learners'],
+];
+
+function renderVariants() {
+  const grid = document.getElementById('variants-grid');
+  grid.innerHTML = '';
+  VARIANTS.forEach((v, vi) => {
+    const card = document.createElement('div');
+    card.className = 'variant-card';
+    card.innerHTML = `
+      <div class="variant-header">
+        <div class="variant-name">${v.name}</div>
+        <div class="variant-tag ${v.tagClass}">${v.tag}</div>
+      </div>
+      <div class="slides-strip">
+        ${SLIDE_TYPES.map((type, si) => {
+          const headline = HEADLINES[si] || HEADLINES[0];
+          const brandColor = selectedColor;
+          const highlightedText = headline.map(l =>
+            l.replace(/\*\*(.+?)\*\*/g, `<span style="color:${brandColor}">$1</span>`)
+          ).join('<br>');
+          const screenshotSrc = uploadedFiles[si] ? URL.createObjectURL(uploadedFiles[si % uploadedFiles.length]) : '';
+          return `
+            <div class="slide-preview" style="background:${v.bg}">
+              <div class="sim-slide">
+                <div class="headline" style="color:${v.textColor}">${highlightedText}</div>
+                <div class="device-mock" style="border: 2px solid rgba(255,255,255,0.1); border-radius: 8px;">
+                  ${screenshotSrc ? `<img src="${screenshotSrc}" />` : `<div style="width:100%;height:100%;background:#2c2c2e;display:flex;align-items:center;justify-content:center;font-size:8px;color:#666">Screen ${si + 1}</div>`}
+                </div>
+                <div class="glow" style="background:${brandColor}"></div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <button class="select-variant-btn" data-variant="${vi}">
+        ${selectedVariant === vi ? '✓ Selected' : 'Select this variation'}
+      </button>
+    `;
+    card.addEventListener('click', () => selectVariant(vi));
+    grid.appendChild(card);
+  });
+}
+
+function selectVariant(index) {
+  selectedVariant = index;
+  document.querySelectorAll('.variant-card').forEach((c, i) => {
+    c.classList.toggle('selected', i === index);
+    c.querySelector('.select-variant-btn').textContent = i === index ? '✓ Selected' : 'Select this variation';
+  });
+  document.getElementById('btn-to-export').disabled = false;
+}
+
+document.getElementById('btn-to-export').addEventListener('click', () => goToStep(4));
+</script>
+</body>
+</html>

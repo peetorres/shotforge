@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shotforge — Final: C + Refine</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #09090b; --surface: #18181b; --surface-2: #27272a; --surface-3: #3f3f46;
+    --text: #fafafa; --text-2: #a1a1aa; --text-3: #52525b;
+    --indigo: #6366f1; --purple: #8b5cf6; --blue: #3b82f6; --cyan: #06b6d4;
+    --green: #22c55e; --orange: #f59e0b; --red: #ef4444; --pink: #ec4899;
+    --radius: 16px; --radius-sm: 10px; --radius-xs: 6px;
+    --font: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  button { font-family: var(--font); cursor: pointer; border: none; outline: none; }
+  input, textarea, select { font-family: var(--font); outline: none; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 2px; }
+
+  /* ─── Animations ───────────────────────────────── */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.05); opacity: 1; } }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+  .fade-up { animation: fadeUp 0.5s var(--ease) both; }
+  .fade-up-d1 { animation: fadeUp 0.5s var(--ease) 0.08s both; }
+  .fade-up-d2 { animation: fadeUp 0.5s var(--ease) 0.16s both; }
+  .fade-up-d3 { animation: fadeUp 0.5s var(--ease) 0.24s both; }
+  .scale-in { animation: scaleIn 0.3s var(--ease) both; }
+
+  /* ─── Navbar ───────────────────────────────────── */
+  .navbar { position: fixed; top: 0; left: 0; right: 0; height: 52px; background: rgba(9,9,11,0.88); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; padding: 0 20px; z-index: 200; }
+  .navbar-brand { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; background: linear-gradient(135deg, var(--indigo), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .navbar-center { position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 0; background: var(--surface); border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.06); }
+  .navbar-step { padding: 5px 16px; font-size: 11px; font-weight: 600; color: var(--text-3); transition: all 0.2s var(--ease); }
+  .navbar-step.active { color: var(--text); background: var(--surface-2); }
+  .navbar-step.done { color: var(--green); }
+  .navbar-step.done::before { content: "✓ "; }
+  .navbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .nav-btn { height: 30px; padding: 0 14px; border-radius: 8px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 5px; transition: all 0.15s var(--ease); }
+  .nav-btn.ghost { background: transparent; color: var(--text-2); }
+  .nav-btn.ghost:hover { background: var(--surface); color: var(--text); }
+  .nav-btn.export { background: var(--green); color: #000; font-weight: 700; }
+  .nav-btn.export:hover { background: #34d058; }
+
+  /* ─── Pages ────────────────────────────────────── */
+  .page { display: none; min-height: 100vh; padding-top: 52px; }
+  .page.active { display: flex; }
+
+  /* ═══════════════════════════════════════════════════
+     PAGE 1: INPUT (from Direction C)
+     ═══════════════════════════════════════════════════ */
+  .input-page { flex-direction: column; align-items: center; justify-content: center; padding: 80px 24px; }
+
+  .hero-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.12)); border: 1px solid rgba(99,102,241,0.2); border-radius: 100px; font-size: 12px; font-weight: 600; color: var(--indigo); margin-bottom: 20px; }
+  .hero-badge .sparkle { animation: breathe 2s ease infinite; }
+
+  .hero-title { font-size: clamp(32px, 5vw, 56px); font-weight: 900; text-align: center; letter-spacing: -2px; line-height: 1.05; margin-bottom: 10px; }
+  .hero-title .grad { background: linear-gradient(135deg, var(--indigo), var(--purple), var(--pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+  .hero-sub { font-size: clamp(14px, 2vw, 17px); color: var(--text-2); text-align: center; max-width: 480px; line-height: 1.5; margin-bottom: 40px; }
+
+  .input-card { max-width: 540px; width: 100%; background: var(--surface); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+
+  .field { margin-bottom: 20px; }
+  .field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .field input, .field textarea { width: 100%; background: var(--bg); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px 16px; font-size: 15px; color: var(--text); transition: all 0.15s var(--ease); }
+  .field input:focus, .field textarea:focus { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
+  .field textarea { resize: none; line-height: 1.5; }
+  .field .hint { font-size: 11px; color: var(--text-3); margin-top: 5px; }
+
+  .upload-zone { border: 2px dashed rgba(255,255,255,0.1); border-radius: 16px; padding: 24px; text-align: center; cursor: pointer; transition: all 0.2s var(--ease); margin-bottom: 10px; }
+  .upload-zone:hover { border-color: var(--indigo); background: rgba(99,102,241,0.03); }
+  .upload-zone.dragging { border-color: var(--indigo); background: rgba(99,102,241,0.06); }
+  .upload-zone .uz-icon { font-size: 32px; margin-bottom: 6px; opacity: 0.5; }
+  .upload-zone h4 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .upload-zone p { font-size: 11px; color: var(--text-3); }
+  .upload-zone input { display: none; }
+
+  .thumb-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 16px; }
+  .thumb { aspect-ratio: 9/19.5; background: var(--surface-2); border-radius: 8px; overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.04); transition: all 0.15s var(--ease); }
+  .thumb.empty { display: flex; align-items: center; justify-content: center; }
+  .thumb.empty span { font-size: 10px; color: var(--text-3); font-weight: 600; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .thumb .num { position: absolute; top: 3px; left: 3px; font-size: 8px; font-weight: 800; background: rgba(0,0,0,0.65); padding: 1px 4px; border-radius: 3px; color: var(--text-2); backdrop-filter: blur(4px); }
+  .thumb .rm { position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 50%; background: rgba(0,0,0,0.65); color: var(--red); font-size: 9px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: all 0.1s; backdrop-filter: blur(4px); }
+  .thumb:hover .rm { opacity: 1; }
+
+  .color-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .color-swatch { width: 36px; height: 36px; border-radius: var(--radius-sm); cursor: pointer; border: 2.5px solid transparent; transition: all 0.12s var(--ease); }
+  .color-swatch:hover { transform: scale(1.08); }
+  .color-swatch.active { border-color: #fff; box-shadow: 0 0 12px rgba(255,255,255,0.1); }
+
+  .gen-btn { width: 100%; height: 52px; border-radius: 14px; font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; transition: all 0.2s var(--ease); }
+  .gen-btn.ready { background: linear-gradient(135deg, var(--indigo), var(--purple)); color: #fff; box-shadow: 0 8px 32px rgba(99,102,241,0.3); }
+  .gen-btn.ready:hover { transform: translateY(-1px); box-shadow: 0 12px 40px rgba(99,102,241,0.4); }
+  .gen-btn:disabled { background: var(--surface-2); color: var(--text-3); cursor: not-allowed; box-shadow: none; }
+
+  /* ═══════════════════════════════════════════════════
+     PAGE 2: GENERATING
+     ═══════════════════════════════════════════════════ */
+  .gen-page { flex-direction: column; align-items: center; justify-content: center; padding: 80px 24px; text-align: center; }
+  .gen-orb { width: 72px; height: 72px; border-radius: 50%; background: linear-gradient(135deg, var(--indigo), var(--purple)); margin-bottom: 28px; animation: breathe 2s ease infinite; box-shadow: 0 0 60px rgba(99,102,241,0.3); }
+  .gen-page h2 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+  .gen-page .sub { color: var(--text-2); font-size: 14px; margin-bottom: 28px; }
+  .gen-steps { display: flex; flex-direction: column; gap: 14px; text-align: left; max-width: 320px; width: 100%; }
+  .gs { display: flex; align-items: center; gap: 12px; }
+  .gs .dot { width: 22px; height: 22px; border-radius: 50%; background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; transition: all 0.3s; font-weight: 700; }
+  .gs.active .dot { background: var(--indigo); color: #fff; animation: breathe 1.5s ease infinite; }
+  .gs.done .dot { background: var(--green); color: #000; }
+  .gs .txt { font-size: 13px; color: var(--text-3); transition: all 0.3s; }
+  .gs.active .txt { color: var(--text); }
+  .gs.done .txt { color: var(--green); }
+
+  /* ═══════════════════════════════════════════════════
+     PAGE 3: RESULTS GALLERY
+     ═══════════════════════════════════════════════════ */
+  .results-page { flex-direction: column; padding: 80px 24px 100px; }
+
+  .results-header { text-align: center; margin-bottom: 40px; }
+  .results-header h2 { font-size: 28px; font-weight: 900; letter-spacing: -1px; margin-bottom: 6px; }
+  .results-header p { color: var(--text-2); font-size: 14px; }
+
+  .variant-block { margin-bottom: 48px; max-width: 1200px; width: 100%; margin-left: auto; margin-right: auto; }
+  .vb-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .vb-name { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
+  .vb-pill { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .vb-pill.dark { background: rgba(99,102,241,0.15); color: var(--indigo); }
+  .vb-pill.light { background: rgba(34,197,94,0.15); color: var(--green); }
+  .vb-pill.vivid { background: rgba(245,158,11,0.15); color: var(--orange); }
+  .vb-actions { margin-left: auto; display: flex; gap: 8px; }
+  .vb-select { height: 34px; padding: 0 18px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 700; transition: all 0.15s var(--ease); }
+  .vb-select.off { background: var(--surface); color: var(--text-2); border: 1px solid rgba(255,255,255,0.06); }
+  .vb-select.off:hover { background: var(--surface-2); color: var(--text); }
+  .vb-select.on { background: var(--indigo); color: #fff; }
+  .vb-refine { height: 34px; padding: 0 18px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; background: var(--surface); color: var(--text-2); border: 1px solid rgba(255,255,255,0.06); transition: all 0.15s var(--ease); }
+  .vb-refine:hover { background: var(--surface-2); color: var(--text); }
+
+  .slides-strip { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
+  .slide-card { flex-shrink: 0; width: 170px; aspect-ratio: 1290/2796; border-radius: 14px; overflow: hidden; scroll-snap-align: start; position: relative; box-shadow: 0 8px 32px rgba(0,0,0,0.3); transition: all 0.2s var(--ease); cursor: pointer; }
+  .slide-card:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 16px 48px rgba(0,0,0,0.4); }
+  .sc-inner { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; padding: 13% 8% 0; position: relative; overflow: hidden; }
+  .sc-inner .headline { font-size: 10px; font-weight: 800; text-align: center; line-height: 1.2; letter-spacing: -0.2px; margin-bottom: 5%; z-index: 2; }
+  .sc-inner .device { width: 56%; aspect-ratio: 9/19.5; border-radius: 8px; overflow: hidden; z-index: 2; box-shadow: 0 6px 24px rgba(0,0,0,0.4); border: 1.5px solid rgba(255,255,255,0.08); }
+  .sc-inner .device img { width: 100%; height: 100%; object-fit: cover; }
+  .sc-inner .glow { position: absolute; width: 130%; height: 60%; bottom: -5%; left: -15%; border-radius: 50%; filter: blur(50px); opacity: 0.2; z-index: 1; }
+
+  /* Export bottom bar */
+  .export-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 68px; background: rgba(9,9,11,0.92); backdrop-filter: blur(24px); border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; gap: 16px; z-index: 200; transform: translateY(100%); transition: all 0.3s var(--ease); }
+  .export-bar.visible { transform: translateY(0); }
+  .export-bar .info { font-size: 13px; color: var(--text-2); }
+  .export-bar .info strong { color: var(--text); }
+  .export-sizes { display: flex; gap: 4px; }
+  .sz { font-size: 10px; padding: 3px 7px; background: var(--surface); border-radius: var(--radius-xs); color: var(--text-3); }
+  .export-btn-bar { height: 40px; padding: 0 24px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; background: var(--green); color: #000; display: flex; align-items: center; gap: 6px; transition: all 0.15s var(--ease); box-shadow: 0 4px 20px rgba(34,197,94,0.25); }
+  .export-btn-bar:hover { background: #34d058; transform: translateY(-1px); }
+
+  /* ═══════════════════════════════════════════════════
+     PAGE 4: REFINE EDITOR
+     ═══════════════════════════════════════════════════ */
+  .editor-page { flex-direction: column; height: 100vh; overflow: hidden; }
+
+  .editor-layout { flex: 1; display: grid; grid-template-columns: 200px 1fr 280px; overflow: hidden; }
+
+  /* Editor Left: Slide list */
+  .ed-left { background: var(--surface); border-right: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; overflow: hidden; }
+  .ed-left-header { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: space-between; }
+  .ed-left-title { font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; }
+  .ed-slides { flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+
+  .ed-slide { display: flex; gap: 8px; align-items: center; padding: 6px; border-radius: 8px; cursor: pointer; transition: all 0.12s var(--ease); border: 1.5px solid transparent; }
+  .ed-slide:hover { background: var(--surface-2); }
+  .ed-slide.active { background: rgba(99,102,241,0.06); border-color: var(--indigo); }
+  .ed-slide-thumb { width: 40px; aspect-ratio: 9/19.5; border-radius: 5px; overflow: hidden; flex-shrink: 0; }
+  .ed-slide-thumb-inner { width: 100%; height: 100%; position: relative; overflow: hidden; }
+  .ed-slide-thumb-inner img { width: 100%; height: 100%; object-fit: cover; }
+  .ed-slide-info { flex: 1; min-width: 0; }
+  .ed-slide-type { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 1px 4px; border-radius: 3px; display: inline-block; margin-bottom: 2px; background: rgba(99,102,241,0.15); color: var(--indigo); }
+  .ed-slide-label { font-size: 10px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Editor Center: Canvas */
+  .ed-center { display: flex; flex-direction: column; overflow: hidden; }
+  .ed-canvas-bar { padding: 8px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .ed-device-label { font-size: 11px; color: var(--text-3); display: flex; align-items: center; gap: 8px; }
+  .ed-live { display: flex; align-items: center; gap: 5px; }
+  .ed-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: breathe 2s ease infinite; }
+  .ed-canvas-area { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; background: radial-gradient(ellipse at center, rgba(255,255,255,0.015) 0%, transparent 70%); }
+  .ed-frame { height: 80%; max-height: 620px; aspect-ratio: 1290/2796; border-radius: 28px; position: relative; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 32px 80px rgba(0,0,0,0.5); transition: all 0.3s var(--ease); }
+  .ed-frame-inner { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; padding: 13% 10% 0; position: relative; overflow: hidden; }
+  .ed-frame-inner .ef-headline { font-size: 16px; font-weight: 800; text-align: center; line-height: 1.15; letter-spacing: -0.5px; margin-bottom: 6%; z-index: 2; }
+  .ed-frame-inner .ef-device { width: 56%; aspect-ratio: 9/19.5; border-radius: 12px; overflow: hidden; z-index: 2; box-shadow: 0 8px 32px rgba(0,0,0,0.4); border: 2px solid rgba(255,255,255,0.08); }
+  .ed-frame-inner .ef-device img { width: 100%; height: 100%; object-fit: cover; }
+  .ed-frame-inner .ef-glow { position: absolute; width: 140%; height: 65%; bottom: -5%; left: -20%; border-radius: 50%; filter: blur(60px); opacity: 0.2; z-index: 1; }
+  .ed-nav { padding: 8px 0 12px; display: flex; align-items: center; justify-content: center; gap: 5px; flex-shrink: 0; }
+  .ed-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--surface-3); cursor: pointer; transition: all 0.15s var(--ease); }
+  .ed-dot.active { width: 18px; border-radius: 3px; background: var(--indigo); }
+  .ed-counter { font-size: 10px; color: var(--text-3); margin-left: 8px; font-weight: 500; }
+
+  /* Editor Right: Inspector */
+  .ed-right { background: var(--surface); border-left: 1px solid rgba(255,255,255,0.06); overflow-y: auto; }
+  .ed-section { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .ed-section-title { font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+  .ed-section-title .ai { font-size: 10px; padding: 2px 6px; background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15)); border: 1px solid rgba(99,102,241,0.25); border-radius: 4px; color: #818cf8; font-weight: 600; letter-spacing: 0; text-transform: none; cursor: pointer; transition: all 0.15s var(--ease); }
+  .ed-section-title .ai:hover { background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.25)); }
+
+  .ed-layouts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .ed-lo { aspect-ratio: 9/19.5; background: var(--surface-2); border: 1.5px solid transparent; border-radius: 6px; cursor: pointer; transition: all 0.12s var(--ease); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  .ed-lo:hover { background: var(--surface-3); }
+  .ed-lo.active { border-color: var(--indigo); }
+  .ed-lo-icon { font-size: 11px; }
+  .ed-lo-label { font-size: 7px; color: var(--text-3); font-weight: 600; text-transform: uppercase; }
+
+  .ed-inp { width: 100%; background: var(--bg); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-xs); padding: 8px 10px; font-size: 13px; color: var(--text); transition: all 0.15s var(--ease); margin-bottom: 8px; }
+  .ed-inp:focus { border-color: var(--indigo); }
+  .ed-inp-label { font-size: 10px; color: var(--text-3); margin-bottom: 4px; display: block; font-weight: 500; }
+
+  .ed-bgs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+  .ed-bg { aspect-ratio: 1; border-radius: var(--radius-xs); cursor: pointer; border: 2px solid transparent; transition: all 0.12s var(--ease); }
+  .ed-bg:hover { transform: scale(1.06); }
+  .ed-bg.active { border-color: #fff; }
+
+  .ed-colors { display: flex; gap: 5px; flex-wrap: wrap; }
+  .ed-color { width: 24px; height: 24px; border-radius: 6px; cursor: pointer; border: 2px solid transparent; transition: all 0.1s var(--ease); }
+  .ed-color:hover { transform: scale(1.1); }
+  .ed-color.active { border-color: #fff; }
+
+  .ed-slider { display: flex; align-items: center; gap: 8px; }
+  .ed-slider input[type="range"] { flex: 1; accent-color: var(--indigo); }
+  .ed-slider .v { font-size: 10px; color: var(--text-3); min-width: 28px; text-align: right; font-family: monospace; }
+
+  .ed-font { width: 100%; background: var(--bg); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-xs); padding: 8px 10px; font-size: 13px; color: var(--text); appearance: none; }
+</style>
+</head>
+<body>
+
+<!-- ─── Navbar ────────────────────────────────────── -->
+<nav class="navbar" id="navbar">
+  <div class="navbar-brand">Shotforge</div>
+  <div class="navbar-center" id="nav-steps">
+    <div class="navbar-step active" data-s="0">Create</div>
+    <div class="navbar-step" data-s="1">Generate</div>
+    <div class="navbar-step" data-s="2">Choose</div>
+    <div class="navbar-step" data-s="3">Refine</div>
+  </div>
+  <div class="navbar-right" id="nav-right"></div>
+</nav>
+
+<!-- ═══ PAGE 1: INPUT ════════════════════════════════ -->
+<div class="page input-page active" id="page-0">
+  <div class="hero-badge fade-up"><span class="sparkle">✦</span> AI-Powered</div>
+  <h1 class="hero-title fade-up-d1">App Store screenshots<br><span class="grad">in one click</span></h1>
+  <p class="hero-sub fade-up-d2">Describe your app, drop your screens, pick a color. AI generates 3 complete sets — you choose and refine.</p>
+
+  <div class="input-card fade-up-d3">
+    <div class="field">
+      <label>App Name</label>
+      <input id="in-name" type="text" placeholder="e.g. Sensei" autocomplete="off" />
+    </div>
+    <div class="field">
+      <label>What does your app do?</label>
+      <textarea id="in-desc" rows="3" placeholder="Gamified learning platform for business and entrepreneurship, with daily challenges, streaks, and AI-powered personalized paths."></textarea>
+      <div class="hint">Be specific — this powers the AI copy for each slide.</div>
+    </div>
+    <div class="field">
+      <label>Screenshots (up to 6)</label>
+      <div class="upload-zone" id="uz" onclick="document.getElementById('finput').click()">
+        <div class="uz-icon">📱</div>
+        <h4>Drop screenshots here</h4>
+        <p>PNG/JPG · up to 6 files</p>
+        <input type="file" id="finput" multiple accept="image/png,image/jpeg" />
+      </div>
+      <div class="thumb-grid" id="thumb-grid"></div>
+    </div>
+    <div class="field">
+      <label>Brand Color</label>
+      <div class="color-row" id="colors"></div>
+    </div>
+    <button class="gen-btn" id="gen-btn" disabled>✦ Generate 3 Variations</button>
+  </div>
+</div>
+
+<!-- ═══ PAGE 2: GENERATING ═══════════════════════════ -->
+<div class="page gen-page" id="page-1">
+  <div class="gen-orb"></div>
+  <h2 class="fade-up">Crafting your screenshots</h2>
+  <p class="sub fade-up-d1">AI is analyzing your app and generating 3 unique sets</p>
+  <div class="gen-steps fade-up-d2" id="gen-steps">
+    <div class="gs active"><div class="dot">1</div><span class="txt">Analyzing screenshots</span></div>
+    <div class="gs"><div class="dot">2</div><span class="txt">Writing conversion-optimized copy</span></div>
+    <div class="gs"><div class="dot">3</div><span class="txt">Rendering Midnight variation</span></div>
+    <div class="gs"><div class="dot">4</div><span class="txt">Rendering Clean variation</span></div>
+    <div class="gs"><div class="dot">5</div><span class="txt">Rendering Vivid variation</span></div>
+  </div>
+</div>
+
+<!-- ═══ PAGE 3: RESULTS ══════════════════════════════ -->
+<div class="page results-page" id="page-2"></div>
+
+<!-- ═══ PAGE 4: EDITOR ═══════════════════════════════ -->
+<div class="page editor-page" id="page-3">
+  <div class="editor-layout">
+    <!-- Left: Slides -->
+    <div class="ed-left">
+      <div class="ed-left-header">
+        <span class="ed-left-title">Slides</span>
+        <span id="ed-count" style="font-size:11px; color:var(--text-3)">0</span>
+      </div>
+      <div class="ed-slides" id="ed-slides"></div>
+    </div>
+
+    <!-- Center: Canvas -->
+    <div class="ed-center">
+      <div class="ed-canvas-bar">
+        <div class="ed-device-label">
+          <span>iPhone 15 Pro Max · 6.7"</span>
+          <span class="ed-live"><span class="ed-live-dot"></span> Live</span>
+        </div>
+      </div>
+      <div class="ed-canvas-area">
+        <div class="ed-frame" id="ed-frame"></div>
+      </div>
+      <div class="ed-nav" id="ed-nav"></div>
+    </div>
+
+    <!-- Right: Inspector -->
+    <div class="ed-right">
+      <div class="ed-section">
+        <div class="ed-section-title">Layout</div>
+        <div class="ed-layouts">
+          <div class="ed-lo active"><div class="ed-lo-icon">🏆</div><div class="ed-lo-label">Hero</div></div>
+          <div class="ed-lo"><div class="ed-lo-icon">📱</div><div class="ed-lo-label">Feature</div></div>
+          <div class="ed-lo"><div class="ed-lo-icon">📱📱</div><div class="ed-lo-label">Dual</div></div>
+          <div class="ed-lo"><div class="ed-lo-icon">📊</div><div class="ed-lo-label">Stats</div></div>
+        </div>
+      </div>
+      <div class="ed-section">
+        <div class="ed-section-title">Copy <span class="ai">✦ AI</span></div>
+        <span class="ed-inp-label">Headline</span>
+        <textarea class="ed-inp" rows="2" id="ed-headline"></textarea>
+        <span class="ed-inp-label">Subtitle</span>
+        <input class="ed-inp" id="ed-subtitle" placeholder="Optional" />
+      </div>
+      <div class="ed-section">
+        <div class="ed-section-title">Background</div>
+        <div class="ed-bgs" id="ed-bgs"></div>
+      </div>
+      <div class="ed-section">
+        <div class="ed-section-title">Brand Color</div>
+        <div class="ed-colors" id="ed-colors"></div>
+      </div>
+      <div class="ed-section">
+        <div class="ed-section-title">Font</div>
+        <select class="ed-font">
+          <option>SF Pro Display</option>
+          <option selected>Inter</option>
+          <option>Poppins</option>
+          <option>Montserrat</option>
+          <option>Space Grotesk</option>
+        </select>
+      </div>
+      <div class="ed-section">
+        <div class="ed-section-title">Device</div>
+        <span class="ed-inp-label">Rotation</span>
+        <div class="ed-slider">
+          <input type="range" min="-20" max="20" value="0" />
+          <span class="v">0°</span>
+        </div>
+        <span class="ed-inp-label" style="margin-top:8px">Scale</span>
+        <div class="ed-slider">
+          <input type="range" min="50" max="120" value="100" />
+          <span class="v">100%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ EXPORT BAR ═══════════════════════════════════ -->
+<div class="export-bar" id="export-bar">
+  <div class="info">Selected: <strong id="exp-label">—</strong></div>
+  <div class="export-sizes">
+    <span class="sz">6.9"</span><span class="sz">6.7"</span><span class="sz">6.5"</span><span class="sz">6.1"</span>
+  </div>
+  <button class="export-btn-bar" onclick="alert('Prototype — would download ZIP with all sizes')">⬇ Download ZIP</button>
+</div>
+
+<script>
+// ─── State ──────────────────────────────────────
+let state = {
+  name: '', desc: '', color: '#6366F1', files: [],
+  activeSlide: 0, selectedVariant: null, currentPage: 0,
+};
+
+const COLORS = ['#6366F1','#3b82f6','#06b6d4','#22c55e','#f59e0b','#ef4444','#ec4899','#8b5cf6'];
+const HEADLINES = [
+  'Your app,\n**elevated**',
+  '**Smart** learning\nmade simple',
+  'Track your\n**progress**',
+  'AI-powered\n**insights**',
+  'Daily\n**challenges**',
+  'Join **thousands**\nof learners',
+];
+const SLIDE_TYPES = ['hero','feature','feature','feature','feature','social'];
+const VARIANTS = [
+  { name: 'Midnight', pill: 'dark', bg: 'linear-gradient(160deg, #0D0D18, #1a1033)', text: '#fff' },
+  { name: 'Clean', pill: 'light', bg: 'linear-gradient(160deg, #F5F5F7, #E8E8ED)', text: '#1d1d1f' },
+  { name: 'Vivid', pill: 'vivid', bg: null, text: '#fff' },
+];
+const BGS = [
+  { label: 'Midnight', bg: 'linear-gradient(160deg, #0D0D18, #1a1033)' },
+  { label: 'Snow', bg: 'linear-gradient(160deg, #F5F5F7, #E8E8ED)' },
+  { label: 'Brand', bg: null }, // dynamic
+  { label: 'Black', bg: 'linear-gradient(160deg, #000, #0a0a1a)' },
+  { label: 'Purple', bg: 'linear-gradient(135deg, #667eea, #764ba2)' },
+  { label: 'Sunset', bg: 'linear-gradient(135deg, #f093fb, #f5576c)' },
+  { label: 'Ocean', bg: 'linear-gradient(135deg, #4facfe, #00f2fe)' },
+  { label: 'Mint', bg: 'linear-gradient(135deg, #43e97b, #38f9d7)' },
+];
+
+function getVariantBg(vi) {
+  if (vi === 2 || VARIANTS[vi].bg === null) return `linear-gradient(160deg, ${state.color}33, ${state.color}66, #0D0D18)`;
+  return VARIANTS[vi].bg;
+}
+
+function highlight(text) {
+  return text.replace(/\*\*(.+?)\*\*/g, `<span style="color:${state.color}">$1</span>`).replace(/\n/g, '<br>');
+}
+
+// ─── Navigation ─────────────────────────────────
+function goPage(n) {
+  state.currentPage = n;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(`page-${n}`).classList.add('active');
+  document.querySelectorAll('.navbar-step').forEach((s, i) => {
+    s.classList.remove('active', 'done');
+    if (i < n) s.classList.add('done');
+    if (i === n) s.classList.add('active');
+  });
+  // Nav right buttons
+  const nr = document.getElementById('nav-right');
+  nr.innerHTML = '';
+  if (n === 2) { /* results: no extra buttons */ }
+  if (n === 3) {
+    nr.innerHTML = `
+      <button class="nav-btn ghost" onclick="goPage(2)">← Back to variants</button>
+      <button class="nav-btn export" onclick="alert('Prototype — would download ZIP')">⬇ Export ZIP</button>
+    `;
+  }
+  window.scrollTo(0, 0);
+}
+
+// ─── Page 1: Input ──────────────────────────────
+// Colors
+const colorsEl = document.getElementById('colors');
+COLORS.forEach((c, i) => {
+  const sw = document.createElement('div');
+  sw.className = `color-swatch ${i === 0 ? 'active' : ''}`;
+  sw.style.background = c;
+  sw.dataset.color = c;
+  sw.onclick = () => {
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+    sw.classList.add('active');
+    state.color = c;
+  };
+  colorsEl.appendChild(sw);
+});
+
+// Thumbs
+function renderThumbs() {
+  const grid = document.getElementById('thumb-grid');
+  grid.innerHTML = '';
+  for (let i = 0; i < 6; i++) {
+    const t = document.createElement('div');
+    t.className = `thumb ${state.files[i] ? '' : 'empty'}`;
+    if (state.files[i]) {
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(state.files[i]);
+      const num = document.createElement('div');
+      num.className = 'num';
+      num.textContent = i + 1;
+      const rm = document.createElement('div');
+      rm.className = 'rm';
+      rm.textContent = '✕';
+      rm.onclick = (e) => { e.stopPropagation(); state.files.splice(i, 1); renderThumbs(); validate(); };
+      t.append(img, num, rm);
+    } else {
+      t.innerHTML = `<span>${i + 1}</span>`;
+    }
+    grid.appendChild(t);
+  }
+  document.getElementById('uz').style.display = state.files.length >= 6 ? 'none' : '';
+}
+renderThumbs();
+
+// Upload
+const finput = document.getElementById('finput');
+const uz = document.getElementById('uz');
+uz.addEventListener('dragover', (e) => { e.preventDefault(); uz.classList.add('dragging'); });
+uz.addEventListener('dragleave', () => uz.classList.remove('dragging'));
+uz.addEventListener('drop', (e) => { e.preventDefault(); uz.classList.remove('dragging'); addFiles(e.dataTransfer.files); });
+finput.addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
+
+function addFiles(fl) {
+  const nf = Array.from(fl).filter(f => f.type.startsWith('image/')).slice(0, 6 - state.files.length);
+  state.files = [...state.files, ...nf].slice(0, 6);
+  renderThumbs();
+  validate();
+}
+
+// Validation
+const inName = document.getElementById('in-name');
+const inDesc = document.getElementById('in-desc');
+const genBtn = document.getElementById('gen-btn');
+
+function validate() {
+  const ready = inName.value.trim() && state.files.length > 0;
+  genBtn.disabled = !ready;
+  genBtn.className = `gen-btn ${ready ? 'ready' : ''}`;
+}
+inName.addEventListener('input', () => { state.name = inName.value; validate(); });
+inDesc.addEventListener('input', () => { state.desc = inDesc.value; });
+
+genBtn.addEventListener('click', () => { goPage(1); runGenerate(); });
+
+// ─── Page 2: Generate ───────────────────────────
+function runGenerate() {
+  const steps = document.querySelectorAll('#gen-steps .gs');
+  let i = 0;
+  const iv = setInterval(() => {
+    if (i > 0) { steps[i-1].classList.remove('active'); steps[i-1].classList.add('done'); steps[i-1].querySelector('.dot').textContent = '✓'; }
+    if (i < steps.length) { steps[i].classList.add('active'); }
+    else { clearInterval(iv); setTimeout(() => { goPage(2); renderResults(); }, 500); }
+    i++;
+  }, 700);
+}
+
+// ─── Page 3: Results ────────────────────────────
+function renderResults() {
+  const page = document.getElementById('page-2');
+  const count = Math.min(state.files.length, 6);
+  page.innerHTML = `
+    <div class="results-header fade-up">
+      <h2>Your screenshots are ready</h2>
+      <p>${count} slides × 3 variations. Pick one, then refine if needed.</p>
+    </div>
+  `;
+  VARIANTS.forEach((v, vi) => {
+    const bg = getVariantBg(vi);
+    const block = document.createElement('div');
+    block.className = 'variant-block fade-up';
+    block.innerHTML = `
+      <div class="vb-header">
+        <div class="vb-name">${v.name}</div>
+        <div class="vb-pill ${v.pill}">${v.name}</div>
+        <div class="vb-actions">
+          <button class="vb-refine" onclick="openEditor(${vi})">✎ Refine</button>
+          <button class="vb-select off" data-vi="${vi}" onclick="selectVariant(${vi})">Select</button>
+        </div>
+      </div>
+      <div class="slides-strip">
+        ${Array.from({ length: count }).map((_, si) => {
+          const hl = highlight(HEADLINES[si] || HEADLINES[0]);
+          const src = state.files[si] ? URL.createObjectURL(state.files[si]) : '';
+          return `
+            <div class="slide-card" style="background:${bg}" onclick="openEditor(${vi}, ${si})">
+              <div class="sc-inner">
+                <div class="headline" style="color:${v.text}">${hl}</div>
+                <div class="device">${src ? `<img src="${src}" />` : '<div style="width:100%;height:100%;background:var(--surface-2)"></div>'}</div>
+                <div class="glow" style="background:${state.color}"></div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+    page.appendChild(block);
+  });
+}
+
+function selectVariant(vi) {
+  state.selectedVariant = vi;
+  document.querySelectorAll('.vb-select').forEach((b, i) => {
+    b.className = `vb-select ${i === vi ? 'on' : 'off'}`;
+    b.textContent = i === vi ? '✓ Selected' : 'Select';
+  });
+  document.getElementById('exp-label').textContent = `${VARIANTS[vi].name} — ${Math.min(state.files.length, 6)} slides`;
+  document.getElementById('export-bar').classList.add('visible');
+}
+
+// ─── Page 4: Editor ─────────────────────────────
+function openEditor(vi, slideIdx) {
+  state.selectedVariant = vi;
+  state.activeSlide = slideIdx || 0;
+  goPage(3);
+  renderEditor();
+}
+
+function renderEditor() {
+  renderEdSlides();
+  renderEdCanvas();
+  renderEdNav();
+  renderEdBgs();
+  renderEdColors();
+  document.getElementById('ed-headline').value = HEADLINES[state.activeSlide] || '';
+}
+
+function renderEdSlides() {
+  const el = document.getElementById('ed-slides');
+  const count = Math.min(state.files.length, 6);
+  document.getElementById('ed-count').textContent = count;
+  el.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const s = document.createElement('div');
+    s.className = `ed-slide ${i === state.activeSlide ? 'active' : ''}`;
+    s.onclick = () => { state.activeSlide = i; renderEditor(); };
+    const bg = getVariantBg(state.selectedVariant);
+    s.innerHTML = `
+      <div class="ed-slide-thumb">
+        <div class="ed-slide-thumb-inner" style="background:${bg}">
+          <img src="${state.files[i] ? URL.createObjectURL(state.files[i]) : ''}" style="opacity:0.7; border-radius:3px; width:70%; height:auto; position:absolute; bottom:0; left:15%" />
+        </div>
+      </div>
+      <div class="ed-slide-info">
+        <div class="ed-slide-type">${SLIDE_TYPES[i]}</div>
+        <div class="ed-slide-label">${(HEADLINES[i] || '').replace(/\*\*/g, '').replace('\n', ' ')}</div>
+      </div>
+    `;
+    el.appendChild(s);
+  }
+}
+
+function renderEdCanvas() {
+  const frame = document.getElementById('ed-frame');
+  const v = VARIANTS[state.selectedVariant] || VARIANTS[0];
+  const bg = getVariantBg(state.selectedVariant);
+  const hl = highlight(HEADLINES[state.activeSlide] || 'Headline');
+  const src = state.files[state.activeSlide] ? URL.createObjectURL(state.files[state.activeSlide]) : '';
+  frame.style.background = bg;
+  frame.innerHTML = `
+    <div class="ed-frame-inner">
+      <div class="ef-headline" style="color:${v.text}">${hl}</div>
+      <div class="ef-device">${src ? `<img src="${src}" />` : '<div style="width:100%;height:100%;background:var(--surface-2)"></div>'}</div>
+      <div class="ef-glow" style="background:${state.color}"></div>
+    </div>
+  `;
+}
+
+function renderEdNav() {
+  const nav = document.getElementById('ed-nav');
+  const count = Math.min(state.files.length, 6);
+  nav.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const d = document.createElement('div');
+    d.className = `ed-dot ${i === state.activeSlide ? 'active' : ''}`;
+    d.onclick = () => { state.activeSlide = i; renderEditor(); };
+    nav.appendChild(d);
+  }
+  const c = document.createElement('span');
+  c.className = 'ed-counter';
+  c.textContent = `${state.activeSlide + 1} / ${count}`;
+  nav.appendChild(c);
+}
+
+function renderEdBgs() {
+  const el = document.getElementById('ed-bgs');
+  el.innerHTML = '';
+  BGS.forEach((b, i) => {
+    const d = document.createElement('div');
+    d.className = `ed-bg ${i === 0 ? 'active' : ''}`;
+    d.style.background = b.bg || `linear-gradient(160deg, ${state.color}33, ${state.color}66, #0D0D18)`;
+    d.onclick = () => {
+      document.querySelectorAll('.ed-bg').forEach(x => x.classList.remove('active'));
+      d.classList.add('active');
+    };
+    el.appendChild(d);
+  });
+}
+
+function renderEdColors() {
+  const el = document.getElementById('ed-colors');
+  el.innerHTML = '';
+  COLORS.forEach(c => {
+    const d = document.createElement('div');
+    d.className = `ed-color ${c === state.color ? 'active' : ''}`;
+    d.style.background = c;
+    d.onclick = () => {
+      state.color = c;
+      document.querySelectorAll('.ed-color').forEach(x => x.classList.remove('active'));
+      d.classList.add('active');
+      renderEdCanvas();
+    };
+    el.appendChild(d);
+  });
+}
+
+// Slider interactivity
+document.querySelectorAll('.ed-slider').forEach(row => {
+  const input = row.querySelector('input');
+  const val = row.querySelector('.v');
+  input.addEventListener('input', () => { val.textContent = input.value + (val.textContent.includes('°') ? '°' : '%'); });
+});
+</script>
+</body>
+</html>
