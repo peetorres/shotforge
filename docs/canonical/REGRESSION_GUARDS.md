@@ -112,3 +112,11 @@ Before any release, verify:
 - [ ] RG-008: Navigate directly to /refine/fake-id, verify redirect
 - [ ] RG-009: Change persist version, verify migration or clean reset
 - [ ] RG-010: Remove API key, verify generation completes with fallback
+- [ ] RG-011: Create page has no vertical scroll on standard laptop (1440×900)
+- [ ] RG-012: All Create fields visible from initial state (ghost structure)
+- [ ] RG-013: CTA always visible without scrolling
+- [ ] RG-014: Progressive disclosure activates correctly (name → desc+upload → color)
+- [ ] RG-015: Create must visually match Preview dark theme family
+- [ ] RG-016: No reintroduction of sidebar Create layout
+- [ ] RG-017: Screenshot thumbnails appear and remain stable after upload
+- [ ] RG-018: No data loss on Create → Generate transition

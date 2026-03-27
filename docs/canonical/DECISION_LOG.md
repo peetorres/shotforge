@@ -88,6 +88,51 @@
 - **Affected Docs**: IMPLEMENTATION_ROADMAP.md
 - **Regression Risk**: None (clean slate)
 
+### DEC-011: Unified Preview surface (Choose + Refine merged)
+- **Date**: 2026-03-27
+- **Context**: Refine as separate page felt disconnected. Editing should be inline.
+- **Decision**: Merge Choose + Refine into one "Preview" surface with Browse/Edit modes. Edit mode slides in sidebar, collapses editorial, keeps strip interactive. No page navigation.
+- **Alternatives Rejected**: Separate Refine page (felt like different app), full-screen editor (lost gallery context)
+- **Affected Docs**: ARCHITECTURE.md, SHOTFORGE_CANON.md, STATE_MACHINE.md
+- **Regression Risk**: None (simplification)
+
+### DEC-013: Create uses centered landing-style layout (sidebar rejected)
+- **Date**: 2026-03-27
+- **Context**: Tested both sidebar+preview split (Option B) and centered card (Option A). User preferred centered.
+- **Decision**: Create is a centered landing page with hero headline + card form. No sidebar. No split screen.
+- **Alternatives Rejected**: Sidebar+preview split (Option B saved as page-option-b.tsx, deprecated)
+- **Affected Docs**: SHOTFORGE_CANON.md, DESIGN_SYSTEM.md
+
+### DEC-014: Ghost progressive disclosure pattern
+- **Date**: 2026-03-27
+- **Context**: Hiding fields completely confused users. They couldn't see the full flow.
+- **Decision**: All fields visible from start in muted/ghost state (opacity 0.25, pointer-events none). Activate sequentially as user progresses.
+- **Affected Docs**: SHOTFORGE_CANON.md
+
+### DEC-015: CTA wording — "Generate screenshots →"
+- **Date**: 2026-03-27
+- **Context**: Compared "Generate screenshots →", "Generate 3 variations →", "Create App Store screenshots →"
+- **Decision**: "Generate screenshots →" — clearest outcome, no jargon, matches product promise
+- **Rationale**: "variations" is internal concept user doesn't need. "Create App Store" too long. "Generate screenshots" = exact what happens.
+
+### DEC-016: Tailwind v4 @layer base fix for dark theme
+- **Date**: 2026-03-27
+- **Context**: Tailwind v4 preflight overrode body background to white and color to black, breaking the dark theme
+- **Decision**: Wrap all base styles in `@layer base {}` in globals.css to ensure correct cascade order
+- **Affected Docs**: DESIGN_SYSTEM.md, KNOWN_FAILURES_AND_GUARDS.md
+
+### DEC-017: Create surface frozen as canonical entry experience
+- **Date**: 2026-03-27
+- **Context**: After multiple iterations, the centered landing-style Create with ghost progressive disclosure reached production quality
+- **Decision**: Freeze Create. No structural changes unless proven UX regression.
+
+### DEC-012: Preview surface frozen as canonical reference
+- **Date**: 2026-03-27
+- **Context**: After 15+ structural iterations, the Preview surface reached AAA-level layout, motion, and interaction quality.
+- **Decision**: Freeze this surface. No structural changes unless proven UX regression. Use as reference for motion, shadows, and interaction patterns elsewhere in the product.
+- **Affected Docs**: HANDOFF_CONTEXT.md
+- **Regression Risk**: None
+
 ### DEC-010: TDD London School with selective anti-tests
 - **Date**: 2026-03-27
 - **Context**: User requirement for rigorous testing with anti-tests
