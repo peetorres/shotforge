@@ -56,7 +56,76 @@ export default function GeneratePage() {
         const variants = createVariants(pending.filenames, pending.brand, pending.brandColor);
         log("2. Variants created — " + Object.keys(variants).length + " variants, " + variants.midnight.slides.length + " slides each");
 
-        log("3. Starting AI copy generation (async, 3 variants × " + pending.filenames.length + " slides)");
+        // ─── AI VISUAL DIRECTOR (feature flag) ──────
+        // Only runs if AI_VISUAL_DIRECTOR flag detected
+        // Scope: slide roles, crop strategy, headlines
+        let aiPlan: { slides: Array<{ slide_role: string; headline: string; crop_strategy: string }> } | null = null;
+
+        try {
+          log("2.5. Checking AI Visual Director...");
+          const aiRes = await fetch("/api/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sessionId: pending.sessionId,
+              brand: pending.brand,
+              description: pending.description,
+              filenames: pending.filenames,
+              variantStyle: "dark",
+            }),
+          });
+
+          if (aiRes.ok) {
+            const aiData = await aiRes.json();
+            if (aiData.aiUsed && aiData.slidePlans) {
+              aiPlan = { slides: aiData.slidePlans };
+              log("2.6. AI Visual Director active — " + aiData.slidePlans.length + " slide plans received");
+              log("2.7. AI timings: " + JSON.stringify(aiData.timings));
+
+              // Side-by-side comparison
+              log("─── COMPARISON: Deterministic vs AI ───");
+              for (let i = 0; i < Math.min(variants.midnight.slides.length, aiData.slidePlans.length); i++) {
+                const detSlide = variants.midnight.slides[i];
+                const aiSlide = aiData.slidePlans[i];
+                const detHeadline = "headline" in detSlide ? (detSlide as { headline: string[] }).headline?.join(" ") : (detSlide as { tagline?: string[] }).tagline?.join(" ") ?? detSlide.type;
+                log(`  Slide ${i + 1}: DET="${detHeadline}" | AI="${aiSlide.headline}" (role: ${aiSlide.slide_role}, crop: ${aiSlide.crop_strategy})`);
+              }
+              log("─── END COMPARISON ───");
+            } else {
+              log("2.6. AI Visual Director: no AI data (key not set or analysis failed)");
+            }
+          } else {
+            log("2.6. AI Visual Director: API returned " + aiRes.status);
+          }
+        } catch (aiErr) {
+          log("2.6. AI Visual Director: failed (" + (aiErr instanceof Error ? aiErr.message : aiErr) + ") — using deterministic");
+        }
+
+        // ─── Apply AI headlines if available ────────
+        if (aiPlan?.slides) {
+          log("2.8. Applying AI headlines to all variants");
+          for (const variantId of ["midnight", "clean", "vivid"] as VariantId[]) {
+            const slides = variants[variantId].slides.map((slide, i) => {
+              const aiSlide = aiPlan!.slides[i];
+              if (!aiSlide) return slide;
+
+              // Only apply: headline and crop strategy (controlled scope)
+              const headlineLines = aiSlide.headline.split(/[,.]/).map((s: string) => s.trim()).filter(Boolean);
+              if (headlineLines.length === 0) return slide;
+
+              if (slide.type === "hero") {
+                return { ...slide, tagline: headlineLines };
+              }
+              if ("headline" in slide) {
+                return { ...slide, headline: headlineLines } as SlideConfig;
+              }
+              return slide;
+            });
+            variants[variantId] = { ...variants[variantId], slides };
+          }
+        }
+
+        log("3. Starting fallback copy generation (async, 3 variants × " + pending.filenames.length + " slides)");
         const copyResults = await generateAllVariants({
           filenames: pending.filenames,
           brand: pending.brand,
@@ -64,14 +133,17 @@ export default function GeneratePage() {
           brandColor: pending.brandColor,
           onProgress: setProgress,
         });
-        log("4. AI copy complete — midnight:" + copyResults.midnight.length + " clean:" + copyResults.clean.length + " vivid:" + copyResults.vivid.length);
+        log("4. Fallback copy complete — midnight:" + copyResults.midnight.length + " clean:" + copyResults.clean.length + " vivid:" + copyResults.vivid.length);
 
-        log("5. Merging copy into variant slides");
+        log("5. Merging copy into variant slides (AI headlines take priority if present)");
         for (const variantId of ["midnight", "clean", "vivid"] as VariantId[]) {
           const copies = copyResults[variantId];
           const slides = variants[variantId].slides.map((slide, i) => {
             const copy: GeneratedCopy | undefined = copies[i];
             if (!copy) return slide;
+
+            // If AI already set the headline, don't overwrite with fallback
+            if (aiPlan?.slides?.[i]) return slide;
 
             if (slide.type === "hero") {
               return {
