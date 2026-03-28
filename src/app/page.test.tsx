@@ -37,8 +37,8 @@ beforeEach(() => {
 describe("Create page — initial render", () => {
   it("renders headline", () => {
     render(<CreatePage />);
-    expect(screen.getByText("App Store screenshots")).toBeDefined();
-    expect(screen.getByText("in one click")).toBeDefined();
+    expect(screen.getByText("Make it satisfying")).toBeDefined();
+    expect(screen.getByText("to look at.")).toBeDefined();
   });
 
   it("renders App Name input and it is interactive", () => {
@@ -66,7 +66,7 @@ describe("Create page — initial render", () => {
 
   it("shows helper text when empty", () => {
     render(<CreatePage />);
-    expect(screen.getByText("Type your app name to start")).toBeDefined();
+    expect(screen.getByText("Name your app to start")).toBeDefined();
   });
 });
 
@@ -89,7 +89,7 @@ describe("Create page — progressive activation", () => {
   it("helper text changes to screenshot prompt after name typed", () => {
     render(<CreatePage />);
     fireEvent.change(screen.getByPlaceholderText("Sensei"), { target: { value: "MyApp" } });
-    expect(screen.getByText("Add screenshots to continue")).toBeDefined();
+    expect(screen.getByText(/Add screenshots/)).toBeDefined();
   });
 
   it("CTA stays disabled without screenshots", () => {

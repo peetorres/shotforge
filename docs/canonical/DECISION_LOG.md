@@ -121,6 +121,23 @@
 - **Decision**: Wrap all base styles in `@layer base {}` in globals.css to ensure correct cascade order
 - **Affected Docs**: DESIGN_SYSTEM.md, KNOWN_FAILURES_AND_GUARDS.md
 
+### DEC-019: Lumo branding finalized — copy, tone, naming
+- **Date**: 2026-03-28
+- **Context**: Phase 1 final polish. Branding needed consolidation.
+- **Decisions**:
+  - Brand badge: "✦ Lumo" (was "✦ AI-Powered")
+  - Hero headline: "Make it satisfying to look at." — emotional, outcome-oriented
+  - Subtitle: "App Store screenshots. Generated, not designed." — positioning statement
+  - Description helper: "· better results" (was "· improves AI copy")
+  - Microcopy: "Ready." when CTA enabled, "Name your app to start" when empty
+  - CTA: "Generate screenshots →" (confirmed from DEC-015)
+- **Tone**: confident, minimal, sharp, product-first. No hype. No generic SaaS.
+
+### DEC-020: Phase 1 canonical baseline frozen
+- **Date**: 2026-03-28
+- **Decision**: Create + Preview + Visual System + Branding all frozen as Phase 1 canonical baseline.
+- **No structural changes without explicit DEC entry.**
+
 ### DEC-018: Canonical Visual System — Lumo (Glass Precision + controlled glow)
 - **Date**: 2026-03-28
 - **Context**: 3 visual variants evaluated (Glass Precision, Depth & Glow, Editorial Minimal)
