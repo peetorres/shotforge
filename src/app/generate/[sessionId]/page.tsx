@@ -103,23 +103,40 @@ export default function GeneratePage() {
 
         // ─── Apply AI headlines if available ────────
         if (aiPlan?.slides) {
-          log("2.8. Applying AI headlines to all variants");
+          log("2.8. Applying AI headlines + crop to all variants");
           for (const variantId of ["midnight", "clean", "vivid"] as VariantId[]) {
             const slides = variants[variantId].slides.map((slide, i) => {
               const aiSlide = aiPlan!.slides[i];
               if (!aiSlide) return slide;
 
-              // Only apply: headline and crop strategy (controlled scope)
+              // Apply headline
               const headlineLines = aiSlide.headline.split(/[,.]/).map((s: string) => s.trim()).filter(Boolean);
-              if (headlineLines.length === 0) return slide;
+              let updated = slide;
 
-              if (slide.type === "hero") {
-                return { ...slide, tagline: headlineLines };
+              if (headlineLines.length > 0) {
+                if (slide.type === "hero") {
+                  updated = { ...updated, tagline: headlineLines } as SlideConfig;
+                } else if ("headline" in slide) {
+                  updated = { ...updated, headline: headlineLines } as SlideConfig;
+                }
               }
-              if ("headline" in slide) {
-                return { ...slide, headline: headlineLines } as SlideConfig;
+
+              // Apply AI crop data (zoom + offset)
+              const crop = (aiSlide as { composition?: { crop?: { zoom?: number; offsetX?: number; offsetY?: number } } }).composition?.crop;
+              if (crop && "zoom" in updated === false) {
+                // Add zoom/offset to slide types that support it
+                if (updated.type === "feature-single" || updated.type === "detail" || updated.type === "result") {
+                  updated = {
+                    ...updated,
+                    zoom: crop.zoom ?? 1,
+                    offsetX: crop.offsetX ?? 0,
+                    offsetY: crop.offsetY ?? 0,
+                  } as SlideConfig;
+                  log(`  Applied AI crop to slide ${i + 1}: zoom=${crop.zoom} offset=${crop.offsetX},${crop.offsetY}`);
+                }
               }
-              return slide;
+
+              return updated;
             });
             variants[variantId] = { ...variants[variantId], slides };
           }
