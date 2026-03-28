@@ -1,18 +1,15 @@
 /**
- * Variant Definitions & Factory
+ * Variant Definitions & Factory — Conversion Engine
  *
- * Canonical: SHOTFORGE_CANON.md §4
- * Narrative sequence: hero → feature → detail → feature → result → detail
- * Each variant is a distinct creative direction, not just a color swap.
+ * NOT a screenshot generator. A conversion narrative builder.
+ * Narrative: hook → problem → solution → mechanism → progress → identity
  */
 
-import type { SlideConfig, HeroSlide, FeatureSingleSlide, DetailSlide, ResultSlide, SlideRole } from "@appforge/screenshot-gen";
+import type { SlideConfig, HeroSlide, FeatureSingleSlide, DetailSlide, ResultSlide, StatementSlide, SlideRole } from "@appforge/screenshot-gen";
 import type { Variant, VariantId, VariantDefinition } from "./types";
 
-// Narrative sequence (mirrors NARRATIVE_SEQUENCE in screenshot-gen, inlined to avoid client bundle bloat)
-const NARRATIVE: SlideRole[] = ["hero", "feature", "detail", "feature", "result", "detail"];
-
-// ─── Variant Definitions ────────────────────────
+// Conversion narrative: hook → tension → solution → quality → reward → close
+const NARRATIVE: SlideRole[] = ["hero", "statement", "feature", "detail", "result", "feature"];
 
 export const VARIANT_DEFINITIONS: readonly VariantDefinition[] = [
   { id: "midnight", name: "Midnight", style: "dark", backgroundColor: "linear-gradient(160deg, #0D0D18, #1a1033)", textColor: "#FFFFFF" },
@@ -20,81 +17,55 @@ export const VARIANT_DEFINITIONS: readonly VariantDefinition[] = [
   { id: "vivid", name: "Vivid", style: "bold", backgroundColor: "", textColor: "#FFFFFF" },
 ] as const;
 
-// ─── Role-Aware Slide Builders ──────────────────
+// ─── Role-Specific Slide Builders ───────────────
 
-function buildHeroSlide(filename: string, brand: string): HeroSlide {
-  return {
-    type: "hero",
-    appName: brand,
-    tagline: ["Stop settling.", "**Start shipping.**"],
-    bullets: [],
-    showStars: true,
-    screenshot: filename,
-  };
+function buildHero(filename: string, brand: string): HeroSlide {
+  return { type: "hero", appName: brand, tagline: ["Stop settling.", "**Start shipping.**"], bullets: [], showStars: true, screenshot: filename };
 }
 
-function buildFeatureSlide(filename: string, angle: number = 5): FeatureSingleSlide {
-  return {
-    type: "feature-single",
-    headline: ["Fix what's", "**holding you back**"],
-    screenshot: filename,
-    angle,
-  };
+function buildStatement(): StatementSlide {
+  return { type: "statement", headline: ["You're not stuck.", "You're **scattered.**"], subline: "There's a difference." };
 }
 
-function buildDetailSlide(filename: string): DetailSlide {
-  return {
-    type: "detail",
-    headline: ["Made with **intent**"],
-    screenshot: filename,
-    cropRule: "focus",
-  };
+function buildFeature(filename: string, angle: number): FeatureSingleSlide {
+  return { type: "feature-single", headline: ["Fix what's", "**holding you back**"], screenshot: filename, angle };
 }
 
-function buildResultSlide(filename: string): ResultSlide {
-  return {
-    type: "result",
-    headline: ["Finally,", "**it sticks**"],
-    screenshot: filename,
-  };
+function buildDetail(filename: string): DetailSlide {
+  return { type: "detail", headline: ["Made with **intent**"], screenshot: filename, cropRule: "focus" };
 }
 
-let featureCounter = 0;
+function buildResult(filename: string): ResultSlide {
+  return { type: "result", headline: ["Finally,", "**it sticks**"], screenshot: filename };
+}
 
-function buildSlideForRole(role: SlideRole, filename: string, brand: string, variantAngle: number): SlideConfig {
+let featureNum = 0;
+
+function buildForRole(role: SlideRole, filename: string | undefined, brand: string, angle: number): SlideConfig {
   switch (role) {
-    case "hero": return buildHeroSlide(filename, brand);
+    case "hero": return buildHero(filename ?? "", brand);
+    case "statement": return buildStatement();
     case "feature": {
-      // Alternate angle direction for visual variety
-      featureCounter++;
-      const angle = featureCounter % 2 === 0 ? variantAngle : -variantAngle;
-      return buildFeatureSlide(filename, angle);
+      featureNum++;
+      const a = featureNum % 2 === 0 ? angle : -angle;
+      return buildFeature(filename ?? "", a);
     }
-    case "detail": return buildDetailSlide(filename);
-    case "result": return buildResultSlide(filename);
+    case "detail": return buildDetail(filename ?? "");
+    case "result": return buildResult(filename ?? "");
+    case "contrast": return buildStatement(); // fallback
+    default: return buildFeature(filename ?? "", 0);
   }
 }
 
-// ─── Narrative Slide Sequence ───────────────────
+// ─── Per-Variant Angles ─────────────────────────
 
-function buildNarrativeSlides(filenames: string[], brand: string, variantAngle: number): SlideConfig[] {
-  featureCounter = 0;
-  return filenames.map((filename, index) => {
-    const role = NARRATIVE[index % NARRATIVE.length];
-    return buildSlideForRole(role, filename, brand, variantAngle);
-  });
-}
-
-// ─── Per-Variant Feature Angles ─────────────────
-// Each variant has distinct composition feel
-
-const VARIANT_ANGLES: Record<VariantId, number> = {
-  midnight: 3,    // Cinematic precision — very subtle tilt
-  clean: 0,       // Apple editorial — perfectly straight
-  vivid: 10,      // Brand energy — dynamic angle
+const ANGLES: Record<VariantId, number> = {
+  midnight: 3,
+  clean: 0,
+  vivid: 10,
 };
 
-// ─── Variant Factory ────────────────────────────
+// ─── Factory ────────────────────────────────────
 
 export function createVariants(
   filenames: string[],
@@ -104,18 +75,26 @@ export function createVariants(
   const result = {} as Record<VariantId, Variant>;
 
   for (const def of VARIANT_DEFINITIONS) {
-    const backgroundColor = def.id === "vivid"
+    const bg = def.id === "vivid"
       ? `linear-gradient(160deg, ${brandColor}33, ${brandColor}66, #0D0D18)`
       : def.backgroundColor;
 
-    result[def.id] = {
-      id: def.id,
-      name: def.name,
-      style: def.style,
-      backgroundColor,
-      textColor: def.textColor,
-      slides: buildNarrativeSlides(filenames, brand, VARIANT_ANGLES[def.id]),
-    };
+    featureNum = 0;
+
+    // Map narrative roles to available screenshots
+    // Statement slides don't need a screenshot
+    const slides: SlideConfig[] = [];
+    let fileIdx = 0;
+
+    for (let i = 0; i < Math.max(filenames.length, 6); i++) {
+      if (i >= 6) break; // max 6 slides
+      const role = NARRATIVE[i % NARRATIVE.length];
+      const needsFile = role !== "statement" && role !== "contrast";
+      const file = needsFile && fileIdx < filenames.length ? filenames[fileIdx++] : undefined;
+      slides.push(buildForRole(role, file, brand, ANGLES[def.id]));
+    }
+
+    result[def.id] = { id: def.id, name: def.name, style: def.style, backgroundColor: bg, textColor: def.textColor, slides };
   }
 
   return result;

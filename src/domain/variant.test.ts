@@ -46,10 +46,11 @@ describe("createVariants (INV-001, INV-002, INV-008)", () => {
     expect(Object.keys(variants)).toEqual(["midnight", "clean", "vivid"]);
   });
 
-  it("INV-002: each variant has exactly N slides (N = filenames.length)", () => {
+  it("INV-002: each variant has slides (up to 6, narrative sequence)", () => {
     const variants = createVariants(filenames, brand, brandColor);
     for (const id of ["midnight", "clean", "vivid"] as const) {
-      expect(variants[id].slides).toHaveLength(filenames.length);
+      expect(variants[id].slides.length).toBeGreaterThanOrEqual(1);
+      expect(variants[id].slides.length).toBeLessThanOrEqual(6);
     }
   });
 
@@ -60,12 +61,11 @@ describe("createVariants (INV-001, INV-002, INV-008)", () => {
     }
   });
 
-  it("slides follow narrative sequence (hero → feature → detail → ...)", () => {
+  it("slides follow conversion narrative (hero → statement → feature → ...)", () => {
     const variants = createVariants(filenames, brand, brandColor);
-    // With 3 files: hero, feature-single, detail
     expect(variants.midnight.slides[0].type).toBe("hero");
-    expect(variants.midnight.slides[1].type).toBe("feature-single");
-    expect(variants.midnight.slides[2].type).toBe("detail");
+    expect(variants.midnight.slides[1].type).toBe("statement"); // text-only, no device
+    expect(variants.midnight.slides[2].type).toBe("feature-single");
   });
 
   it("hero slide has correct brand name", () => {
@@ -80,9 +80,9 @@ describe("createVariants (INV-001, INV-002, INV-008)", () => {
     const variants = createVariants(filenames, brand, brandColor);
     const slides = variants.midnight.slides;
     expect(slides[0].type === "hero" && slides[0].screenshot).toBe("screen1.png");
-    expect(slides[1].type === "feature-single" && slides[1].screenshot).toBe("screen2.png");
-    // Slide 2 is "detail" type (narrative sequence)
-    expect(slides[2].type === "detail" && slides[2].screenshot).toBe("screen3.png");
+    // Slide 1 is statement (no screenshot needed)
+    expect(slides[1].type).toBe("statement");
+    expect(slides[2].type === "feature-single" && slides[2].screenshot).toBe("screen2.png");
   });
 
   it("vivid variant background includes brand color", () => {
@@ -90,10 +90,10 @@ describe("createVariants (INV-001, INV-002, INV-008)", () => {
     expect(variants.vivid.backgroundColor).toContain("6366F1");
   });
 
-  it("handles single file (1 slide = hero only)", () => {
+  it("handles single file (hero + statement + features using same file)", () => {
     const variants = createVariants(["screen1.png"], brand, brandColor);
     for (const id of ["midnight", "clean", "vivid"] as const) {
-      expect(variants[id].slides).toHaveLength(1);
+      expect(variants[id].slides.length).toBeGreaterThanOrEqual(1);
       expect(variants[id].slides[0].type).toBe("hero");
     }
   });

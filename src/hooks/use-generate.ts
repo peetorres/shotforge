@@ -31,8 +31,8 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeout: numb
   }
 }
 
-// Narrative role sequence for copy generation
-const SLIDE_ROLES = ["hero", "feature-single", "detail", "feature-single", "result", "detail"] as const;
+// Narrative role sequence for copy generation (matches variant.ts NARRATIVE)
+const SLIDE_ROLES = ["hero", "statement", "feature-single", "detail", "result", "feature-single"] as const;
 
 export async function generateAllVariants(opts: GenerateOptions): Promise<GenerateResult> {
   const { filenames, brand, description, onProgress } = opts;

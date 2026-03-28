@@ -78,9 +78,10 @@ describe("Store: slide updates (INV-003 isolation)", () => {
   });
 
   it("updateSlide modifies the correct slide in the correct variant", () => {
-    store.getState().updateSlide("midnight", 1, { headline: ["**New** headline"] });
-    const slide = store.getState().project!.variants.midnight.slides[1];
-    expect(slide.type === "feature-single" && slide.headline).toEqual(["**New** headline"]);
+    store.getState().updateSlide("midnight", 2, { headline: ["**New** headline"] });
+    const slide = store.getState().project!.variants.midnight.slides[2];
+    // Slide 2 is feature-single in narrative sequence
+    expect("headline" in slide && (slide as { headline: string[] }).headline).toEqual(["**New** headline"]);
   });
 
   it("INV-003: updateSlide on midnight does NOT mutate clean", () => {

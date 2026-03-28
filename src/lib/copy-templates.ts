@@ -1,58 +1,42 @@
 /**
- * Copy Templates — Conversion-driven storytelling
+ * Copy Templates — Conversion Narrative Engine
  *
- * NOT generic design system output.
- * Each headline must create tension, curiosity, or desire.
- * Narrative: hook → understand → desire → reward
+ * NOT generic. Every line creates tension, curiosity, or identity.
+ * Narrative: hook → problem → solution → mechanism → progress → identity
  *
- * RULE-G06: Fallback when AI unavailable.
+ * Forbidden words: powerful, simple, clean, better, easy
+ * Required: contrast, contradiction, specificity, transformation
  */
 
 import type { GeneratedCopy, AppStyle } from "@/domain/types";
 
-type SlideType = "hero" | "feature-single" | "feature-dual" | "detail" | "result";
+type SlideType = "hero" | "feature-single" | "feature-dual" | "detail" | "result" | "statement" | "contrast";
 
-// ─── HERO: Must hook attention. Bold statement. Stop scrolling. ──
+// ─── HOOK: Stop scrolling. Bold truth. ──────────
 
 const HERO_COPY: Record<AppStyle, Omit<GeneratedCopy, "contentOrigin">> = {
-  dark: {
-    tagline: ["Stop settling.", "**Start shipping.**"],
-    badgeText: "NEW",
-    bullets: [],
-  },
-  light: {
-    tagline: ["Less noise.", "**More clarity.**"],
-    badgeText: "FEATURED",
-    bullets: [],
-  },
-  bold: {
-    tagline: ["Most people", "**quit here.**"],
-    badgeText: "NEW",
-    bullets: [],
-  },
+  dark: { tagline: ["Stop settling.", "**Start shipping.**"], badgeText: "NEW", bullets: [] },
+  light: { tagline: ["Less noise.", "**More done.**"], badgeText: "FEATURED", bullets: [] },
+  bold: { tagline: ["Most people", "**quit here.**"], badgeText: "NEW", bullets: [] },
 };
 
-// ─── FEATURE: Create understanding. Specific benefit. ──
+// ─── PROBLEM: "That's me." ──────────────────────
+
+const STATEMENT_COPY: Record<AppStyle, { headline: string[]; subline: string }> = {
+  dark: { headline: ["You're not stuck.", "You're **scattered.**"], subline: "There's a difference." },
+  light: { headline: ["You know what", "**to do.**"], subline: "You just can't start." },
+  bold: { headline: ["Everyone has", "a **plan.**"], subline: "Until Monday morning." },
+};
+
+// ─── SOLUTION: Introduce the system. ────────────
 
 const FEATURE_COPY: Record<AppStyle, string[][]> = {
-  dark: [
-    ["Fix what's", "**holding you back**"],
-    ["See what", "**others miss**"],
-    ["Skip the", "**learning curve**"],
-  ],
-  light: [
-    ["Everything", "**where it should be**"],
-    ["No more", "**searching for it**"],
-    ["Works the way", "**you think**"],
-  ],
-  bold: [
-    ["Built for people", "who **ship**"],
-    ["Not another", "**dashboard**"],
-    ["Do more with", "**less effort**"],
-  ],
+  dark: [["Fix what's", "**holding you back**"], ["See what", "**others miss**"]],
+  light: [["Everything", "**where it should be**"], ["Works the way", "**you think**"]],
+  bold: [["Built for people", "who **ship**"], ["Not another", "**dashboard**"]],
 };
 
-// ─── DETAIL: Show quality. Imply craft. Minimal. ──
+// ─── MECHANISM: Show quality. ───────────────────
 
 const DETAIL_COPY: Record<AppStyle, string[][]> = {
   dark: [["Made with **intent**"]],
@@ -60,21 +44,12 @@ const DETAIL_COPY: Record<AppStyle, string[][]> = {
   bold: [["**Obsessively** crafted"]],
 };
 
-// ─── RESULT: Emotional payoff. Social proof. Reward. ──
+// ─── PROGRESS: Emotional payoff. ────────────────
 
 const RESULT_COPY: Record<AppStyle, string[][]> = {
-  dark: [
-    ["Finally,", "**it sticks**"],
-    ["People don't", "**just use it**"],
-  ],
-  light: [
-    ["The app they", "**come back to**"],
-    ["4.9★ for", "**a reason**"],
-  ],
-  bold: [
-    ["Join the ones", "who **stayed**"],
-    ["They tried", "**everything else**"],
-  ],
+  dark: [["Finally,", "**it sticks**"]],
+  light: [["The app they", "**come back to**"]],
+  bold: [["Join the ones", "who **stayed**"]],
 };
 
 let featureIdx = 0;
@@ -86,28 +61,31 @@ export function getTemplateCopy(slideType: SlideType, style: AppStyle): Generate
     return { ...HERO_COPY[style], contentOrigin: "template_fallback" };
   }
 
+  if (slideType === "statement" || slideType === "contrast") {
+    const s = STATEMENT_COPY[style];
+    return { headline: s.headline, contentOrigin: "template_fallback" };
+  }
+
   if (slideType === "detail") {
-    const headlines = DETAIL_COPY[style];
-    const headline = headlines[detailIdx % headlines.length];
+    const hl = DETAIL_COPY[style];
+    const headline = hl[detailIdx % hl.length];
     detailIdx++;
     return { headline, contentOrigin: "template_fallback" };
   }
 
   if (slideType === "result") {
-    const headlines = RESULT_COPY[style];
-    const headline = headlines[resultIdx % headlines.length];
+    const hl = RESULT_COPY[style];
+    const headline = hl[resultIdx % hl.length];
     resultIdx++;
     return { headline, contentOrigin: "template_fallback" };
   }
 
-  const headlines = FEATURE_COPY[style];
-  const headline = headlines[featureIdx % headlines.length];
+  const hl = FEATURE_COPY[style];
+  const headline = hl[featureIdx % hl.length];
   featureIdx++;
   return { headline, contentOrigin: "template_fallback" };
 }
 
 export function resetCopyIndices() {
-  featureIdx = 0;
-  detailIdx = 0;
-  resultIdx = 0;
+  featureIdx = 0; detailIdx = 0; resultIdx = 0;
 }
