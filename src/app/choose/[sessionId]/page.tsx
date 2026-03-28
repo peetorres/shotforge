@@ -8,6 +8,7 @@ import { PreviewSurface } from "@/components/preview/preview-surface";
 import { usePreviewCache } from "@/hooks/use-preview-cache";
 import { useExport } from "@/hooks/use-export";
 import type { ProjectState, VariantId } from "@/domain/types";
+import { AIDebugPanel, type AIRunResult } from "@/components/preview/ai-debug-panel";
 
 export default function PreviewPage() {
   const router = useRouter();
@@ -15,6 +16,8 @@ export default function PreviewPage() {
   const [project, setProject] = useState<ProjectState | null>(null);
   const [activeVariantId, setActiveVariantId] = useState<VariantId>("midnight");
   const [isExporting, setIsExporting] = useState(false);
+  const [aiResult, setAiResult] = useState<AIRunResult | null>(null);
+  const [aiEnabled, setAiEnabled] = useState(true);
 
   useEffect(() => {
     try {
@@ -75,6 +78,59 @@ export default function PreviewPage() {
     persist({ ...project, selectedVariantId: id, updatedAt: new Date().toISOString() });
   }, [project, persist]);
 
+  // AI experiment runner
+  const runAIExperiment = useCallback(async () => {
+    if (!project) return;
+    setAiResult({ status: "running", timings: {}, slideCount: 0, fallbackUsed: false, comparisons: [] });
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: project.sessionId,
+          brand: project.brand,
+          description: project.description,
+          filenames: project.uploadedFiles,
+          variantStyle: activeVariantId === "midnight" ? "dark" : activeVariantId === "clean" ? "light" : "bold",
+        }),
+      });
+      const data = await res.json();
+
+      // Build comparisons
+      const comparisons = (activeVariant?.slides ?? []).map((slide, i) => {
+        const detHeadline = "headline" in slide
+          ? (slide as { headline: string[] }).headline.join(" ")
+          : (slide as { tagline?: string[] }).tagline?.join(" ") ?? slide.type;
+        const aiSlide = data.slidePlans?.[i];
+        return {
+          index: i,
+          deterministic: detHeadline,
+          ai: aiSlide?.headline ?? null,
+          role: aiSlide?.slide_role ?? null,
+          crop: aiSlide?.crop_strategy ?? null,
+        };
+      });
+
+      setAiResult({
+        status: data.aiUsed ? "success" : "fallback",
+        timings: data.timings ?? {},
+        slideCount: data.slidePlans?.length ?? 0,
+        fallbackUsed: !data.aiUsed,
+        comparisons,
+        error: data.aiUsed ? undefined : "AI not available — using deterministic",
+      });
+    } catch (e) {
+      setAiResult({
+        status: "failed",
+        timings: {},
+        slideCount: 0,
+        fallbackUsed: true,
+        comparisons: [],
+        error: e instanceof Error ? e.message : "Unknown error",
+      });
+    }
+  }, [project, activeVariant, activeVariantId]);
+
   if (!project || !activeVariant) {
     return (
       <>
@@ -103,6 +159,12 @@ export default function PreviewPage() {
           onSelect={handleSelect}
         />
       </main>
+      <AIDebugPanel
+        result={aiResult}
+        aiEnabled={aiEnabled}
+        onToggle={setAiEnabled}
+        onRunExperiment={runAIExperiment}
+      />
     </>
   );
 }
