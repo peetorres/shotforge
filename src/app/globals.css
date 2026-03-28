@@ -1,77 +1,59 @@
 @import "tailwindcss";
 
 /**
- * Shotforge V2 Design System Tokens
- * Canonical: docs/canonical/DESIGN_SYSTEM.md
+ * Shotforge V2 Design System
  *
- * IMPORTANT: These must override Tailwind's preflight.
- * Using @layer base ensures correct cascade order in Tailwind v4.
+ * CRITICAL: These styles are OUTSIDE @layer to override Tailwind's preflight.
+ * Tailwind v4 preflight lives in @layer base, so unlayered styles win in cascade.
  */
 
-@layer base {
-  :root {
-    /* Background */
-    --bg: #09090b;
-    --surface: #111113;
-    --surface-2: #1c1c1e;
-    --surface-3: #27272a;
-    --surface-4: #3f3f46;
-
-    /* Text */
-    --text: #fafafa;
-    --text-2: #a1a1aa;
-    --text-3: #52525b;
-    --text-4: #71717a;
-
-    /* Accent */
-    --indigo: #6366f1;
-    --purple: #8b5cf6;
-    --green: #22c55e;
-    --orange: #f59e0b;
-    --red: #ef4444;
-    --pink: #ec4899;
-    --blue: #3b82f6;
-    --cyan: #06b6d4;
-
-    /* Borders */
-    --border-subtle: rgba(255, 255, 255, 0.04);
-    --border: rgba(255, 255, 255, 0.06);
-    --border-input: rgba(255, 255, 255, 0.08);
-
-    /* Radius */
-    --r-xs: 5px;
-    --r-sm: 7px;
-    --r-md: 10px;
-    --r-lg: 14px;
-    --r-xl: 20px;
-    --r-pill: 100px;
-
-    /* Motion */
-    --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  *, *::before, *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-
-  body {
-    background-color: #09090b;
-    color: #fafafa;
-    font-family: var(--font-inter, 'Inter'), -apple-system, BlinkMacSystemFont, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
-  }
-
-  button { font-family: inherit; cursor: pointer; border: none; outline: none; }
-  input, textarea, select { font-family: inherit; outline: none; }
-
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 2px; }
+:root {
+  --bg: #09090b;
+  --surface: #111113;
+  --surface-2: #1c1c1e;
+  --surface-3: #27272a;
+  --surface-4: #3f3f46;
+  --text: #fafafa;
+  --text-2: #a1a1aa;
+  --text-3: #52525b;
+  --text-4: #71717a;
+  --indigo: #6366f1;
+  --purple: #8b5cf6;
+  --green: #22c55e;
+  --orange: #f59e0b;
+  --red: #ef4444;
+  --pink: #ec4899;
+  --blue: #3b82f6;
+  --cyan: #06b6d4;
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --border: rgba(255, 255, 255, 0.06);
+  --border-input: rgba(255, 255, 255, 0.08);
+  --r-xs: 5px;
+  --r-sm: 7px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-pill: 100px;
+  --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background-color: #09090b !important;
+  color: #fafafa !important;
+  font-family: var(--font-inter, 'Inter'), -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+button { font-family: inherit; cursor: pointer; border: none; outline: none; }
+input, textarea, select { font-family: inherit; outline: none; color: inherit; background: inherit; }
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 2px; }
 
 @keyframes fade-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.05); opacity: 1; } }

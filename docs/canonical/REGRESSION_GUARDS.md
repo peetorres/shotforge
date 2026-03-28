@@ -120,3 +120,8 @@ Before any release, verify:
 - [ ] RG-016: No reintroduction of sidebar Create layout
 - [ ] RG-017: Screenshot thumbnails appear and remain stable after upload
 - [ ] RG-018: No data loss on Create → Generate transition
+- [ ] RG-019: Visual system must not change without explicit DEC entry
+- [ ] RG-020: No reintroduction of alternative visual themes in production
+- [ ] RG-021: Glow must remain controlled (≤ 7% opacity, ≤ 100px blur)
+- [ ] RG-022: Glass blur must remain subtle (≤ 16px backdrop-filter)
+- [ ] RG-023: Preview must remain output-first, not UI-first

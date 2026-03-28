@@ -121,6 +121,14 @@
 - **Decision**: Wrap all base styles in `@layer base {}` in globals.css to ensure correct cascade order
 - **Affected Docs**: DESIGN_SYSTEM.md, KNOWN_FAILURES_AND_GUARDS.md
 
+### DEC-018: Canonical Visual System — Lumo (Glass Precision + controlled glow)
+- **Date**: 2026-03-28
+- **Context**: 3 visual variants evaluated (Glass Precision, Depth & Glow, Editorial Minimal)
+- **Decision**: Glass Precision as base, with controlled glow from Depth & Glow and typographic restraint from Editorial
+- **Reasoning**: Glass scores highest on Trust (9), Longevity (9), Brand alignment (10), Conversion (9), Scalability (9)
+- **Rejected**: Depth & Glow (too cinematic), Editorial Minimal (too cold)
+- **Integrated from rejected**: Controlled glow (7% opacity, 100px blur), typographic restraint (weight 800, tracking -1.5)
+
 ### DEC-017: Create surface frozen as canonical entry experience
 - **Date**: 2026-03-27
 - **Context**: After multiple iterations, the centered landing-style Create with ghost progressive disclosure reached production quality

@@ -16,6 +16,8 @@ import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { nanoid } from "nanoid";
 import { NavBar } from "@/components/shared/nav-bar";
+import { useLumo } from "@/themes/theme-context";
+import { brandGlow } from "@/themes/theme-system";
 
 const COLORS = ["#6366f1", "#3b82f6", "#06b6d4", "#22c55e", "#f59e0b", "#ef4444", "#ec4899", "#8b5cf6"];
 
@@ -35,6 +37,7 @@ export default function CreatePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const t = useLumo();
 
   // Derived state
   const hasBrand = brand.trim().length > 0;
@@ -106,14 +109,17 @@ export default function CreatePage() {
         alignItems: "center", justifyContent: "center",
         overflow: "hidden", position: "relative",
       }}>
-        {/* Ambient glow — responds to brand color + progression */}
+        {/* Ambient glow — responds to brand color + theme */}
         <div style={{
-          position: "absolute", width: 500, height: 500, borderRadius: "50%",
-          background: brandColor, filter: "blur(140px)",
-          opacity: hasFiles ? 0.09 : hasBrand ? 0.04 : 0.015,
+          position: "absolute",
+          width: 500, height: 500,
+          borderRadius: "50%",
+          background: brandColor, filter: `blur(${t.glowBlur}px)`,
+          opacity: hasFiles ? t.glowOpacity * 1.5 : hasBrand ? t.glowOpacity * 0.6 : t.glowOpacity * 0.2,
           transition: `all 1s ${EASE}`, pointerEvents: "none",
           top: "25%", left: "50%", transform: "translateX(-50%)",
         }} />
+
 
         {/* Badge */}
         <div style={{
@@ -154,13 +160,15 @@ export default function CreatePage() {
           Drop your screens, pick a style. AI does the rest.
         </p>
 
-        {/* Card */}
+        {/* Card — themed surface */}
         <div style={{
           maxWidth: 480, width: "100%",
-          background: "var(--surface)",
-          border: `1px solid ${canSubmit ? "rgba(99,102,241,0.12)" : "var(--border)"}`,
-          borderRadius: 18, padding: "20px 24px",
-          boxShadow: `0 2px 4px rgba(0,0,0,0.1), 0 8px 24px rgba(0,0,0,0.2), 0 20px 56px rgba(0,0,0,0.35), 0 0 60px ${brandColor}${hasFiles ? "0a" : "04"}`,
+          background: t.surface,
+          backdropFilter: t.surfaceBlur > 0 ? `blur(${t.surfaceBlur}px)` : "none",
+          WebkitBackdropFilter: t.surfaceBlur > 0 ? `blur(${t.surfaceBlur}px)` : "none",
+          border: `1px solid ${canSubmit ? "rgba(99,102,241,0.12)" : t.surfaceBorder}`,
+          borderRadius: t.cardRadius, padding: "20px 24px",
+          boxShadow: `${t.shadowRest}, ${brandGlow(brandColor)}`,
           animation: `fade-up ${T_SLOW} ${EASE} 0.18s both`,
           transition: `border-color ${T_SLOW} ${EASE}, box-shadow 0.8s ${EASE}`,
         }}>
@@ -295,18 +303,23 @@ export default function CreatePage() {
                 : "none",
               transition: `all ${T_NORMAL} ${EASE}`,
             }}
-            onMouseEnter={(e) => { if (canSubmit) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 2px 6px rgba(99,102,241,0.2), 0 8px 32px rgba(99,102,241,0.35)"; } }}
+            onMouseEnter={(e) => { if (canSubmit) { e.currentTarget.style.transform = `translateY(-${t.hoverLift}px)`; e.currentTarget.style.boxShadow = "0 2px 6px rgba(99,102,241,0.2), 0 8px 32px rgba(99,102,241,0.35)"; e.currentTarget.style.transition = `all ${t.durationNormal} ${t.easeSpring}`; } }}
             onMouseLeave={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = canSubmit ? "0 2px 6px rgba(99,102,241,0.15), 0 6px 24px rgba(99,102,241,0.25)" : "none"; }}
-            onMouseDown={(e) => { if (canSubmit) e.currentTarget.style.transform = "scale(0.98)"; }}
-            onMouseUp={(e) => { e.currentTarget.style.transform = ""; }}
+            onMouseDown={(e) => { if (canSubmit) { e.currentTarget.style.transform = `scale(${t.pressScale})`; e.currentTarget.style.transition = `all 0.1s ${EASE}`; } }}
+            onMouseUp={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.transition = `all ${t.durationNormal} ${t.easeSpring}`; }}
           >
             {isSubmitting ? "Uploading..." : "Generate screenshots →"}
           </button>
-          {!canSubmit && (
-            <p style={{ fontSize: 10, color: "var(--text-4)", textAlign: "center", marginTop: 6, transition: `all ${T_NORMAL} ${EASE}` }}>
-              {!hasBrand ? "Type your app name to start" : !hasFiles ? "Add screenshots to continue" : ""}
-            </p>
-          )}
+          {/* Dynamic microcopy — context-aware */}
+          <p style={{ fontSize: 10, color: canSubmit ? "var(--indigo)" : "var(--text-4)", textAlign: "center", marginTop: 6, transition: `all ${T_NORMAL} ${EASE}`, opacity: 0.8 }}>
+            {canSubmit
+              ? "Ready to generate"
+              : !hasBrand
+                ? "Type your app name to start"
+                : !hasFiles
+                  ? "Add screenshots to continue"
+                  : ""}
+          </p>
         </div>
       </main>
     </>

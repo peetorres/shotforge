@@ -6,6 +6,7 @@ import type { Variant, VariantId } from "@/domain/types";
 import { SlideCard } from "@/components/choose/slide-card";
 import { InlineEditor } from "./inline-editor";
 
+
 interface PreviewSurfaceProps {
   variants: Record<VariantId, Variant>;
   brandColor: string;
@@ -59,9 +60,11 @@ export function PreviewSurface({
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "0 48px", height: NAV_H, flexShrink: 0,
       }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-4)", letterSpacing: 0.3 }}>
-          ✦ Your screenshots
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-4)", letterSpacing: 0.3 }}>
+            ✦ Your screenshots
+          </span>
+        </div>
 
         {/* Tabs — sliding pill indicator */}
         <div style={{
