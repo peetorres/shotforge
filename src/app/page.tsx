@@ -103,7 +103,7 @@ export default function CreatePage() {
           background: "rgba(99,102,241,0.05)", backdropFilter: "blur(12px)",
           border: "1px solid rgba(99,102,241,0.08)",
           borderRadius: 100, fontSize: 12, fontWeight: 600, color: "#6366f1",
-          marginBottom: 12, opacity: 0.85,
+          marginBottom: 10, opacity: 0.75,
           animation: `fade-up ${t.durationSlow} ${t.easeDefault} both`,
         }}>
           <span style={{ animation: "breathe 2s ease infinite" }}>✦</span> Lumo
@@ -205,7 +205,7 @@ export default function CreatePage() {
                 ))}
               </div>
             )}
-            {/* Drop zone — premium interactive surface */}
+            {/* Drop zone — glass interactive surface */}
             {files.length < 6 && (
               <div
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -213,24 +213,29 @@ export default function CreatePage() {
                 onDrop={handleDrop}
                 onClick={() => uploadActive && document.getElementById("sf-f")?.click()}
                 style={{
-                  border: `1px solid ${dragOver ? "rgba(99,102,241,0.4)" : "rgba(255,255,255,0.06)"}`,
+                  border: `1px solid ${dragOver ? "rgba(99,102,241,0.3)" : "rgba(255,255,255,0.05)"}`,
                   borderRadius: 12,
-                  padding: files.length > 0 ? "8px 12px" : "14px 12px",
+                  padding: files.length > 0 ? "8px 12px" : "16px 12px",
                   textAlign: "center",
                   cursor: uploadActive ? "pointer" : "default",
-                  background: dragOver ? "rgba(99,102,241,0.04)" : "rgba(255,255,255,0.02)",
-                  backdropFilter: "blur(4px)",
-                  boxShadow: dragOver ? "inset 0 0 20px rgba(99,102,241,0.04)" : t.surfaceInnerHighlight,
+                  background: dragOver
+                    ? "linear-gradient(180deg, rgba(99,102,241,0.06) 0%, rgba(99,102,241,0.02) 100%)"
+                    : "linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0.01) 100%)",
+                  backdropFilter: "blur(8px)",
+                  boxShadow: dragOver
+                    ? "inset 0 1px 0 rgba(99,102,241,0.08), inset 0 0 24px rgba(99,102,241,0.03), 0 1px 3px rgba(0,0,0,0.06)"
+                    : "inset 0 0.5px 0 rgba(255,255,255,0.04), 0 1px 3px rgba(0,0,0,0.04)",
                   transition: `all ${t.durationNormal} ${t.easeDefault}`,
+                  transform: dragOver ? "scale(1.005)" : "scale(1)",
                 }}
-                onMouseEnter={(e) => { if (uploadActive && !dragOver) { e.currentTarget.style.borderColor = "rgba(99,102,241,0.2)"; e.currentTarget.style.background = "rgba(255,255,255,0.03)"; } }}
-                onMouseLeave={(e) => { if (!dragOver) { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.background = "rgba(255,255,255,0.02)"; } }}
+                onMouseEnter={(e) => { if (uploadActive && !dragOver) { e.currentTarget.style.background = "linear-gradient(180deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.015) 100%)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; } }}
+                onMouseLeave={(e) => { if (!dragOver) { e.currentTarget.style.background = "linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0.01) 100%)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"; } }}
               >
                 <input id="sf-f" type="file" multiple accept="image/png,image/jpeg" style={{ display: "none" }} onChange={handleFileInput} />
-                <p style={{ fontSize: 12, fontWeight: 600, color: "#fafafa", marginBottom: files.length === 0 ? 1 : 0 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: "#e4e4e7", marginBottom: files.length === 0 ? 2 : 0 }}>
                   {files.length === 0 ? "Drop screenshots here" : `Add more (${6 - files.length} left)`}
                 </p>
-                {files.length === 0 && <p style={{ fontSize: 10, color: "#52525b" }}>PNG/JPG · up to 6</p>}
+                {files.length === 0 && <p style={{ fontSize: 10, color: "#3f3f46", letterSpacing: 0.2 }}>PNG/JPG · up to 6</p>}
               </div>
             )}
           </div>
@@ -265,13 +270,13 @@ export default function CreatePage() {
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               background: canSubmit
                 ? "linear-gradient(135deg, #6366f1, #8b5cf6)"
-                : "linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.08))",
+                : "linear-gradient(135deg, rgba(99,102,241,0.06), rgba(139,92,246,0.04))",
               color: canSubmit ? "#fff" : "#52525b",
               cursor: canSubmit ? "pointer" : "not-allowed",
-              border: canSubmit ? "1px solid rgba(99,102,241,0.3)" : "1px solid rgba(99,102,241,0.06)",
+              border: canSubmit ? "1px solid rgba(99,102,241,0.3)" : "1px solid rgba(99,102,241,0.05)",
               boxShadow: canSubmit
-                ? `0 2px 6px rgba(99,102,241,0.15), 0 6px 24px rgba(99,102,241,0.25)`
-                : "none",
+                ? "0 2px 6px rgba(99,102,241,0.15), 0 6px 24px rgba(99,102,241,0.25)"
+                : "inset 0 1px 0 rgba(255,255,255,0.02)",
               transition: `all ${t.durationNormal} ${t.easeDefault}`,
             }}
             onMouseEnter={(e) => { if (canSubmit) { e.currentTarget.style.transform = `translateY(-${t.hoverLift}px)`; e.currentTarget.style.boxShadow = "0 2px 6px rgba(99,102,241,0.2), 0 8px 32px rgba(99,102,241,0.35)"; e.currentTarget.style.transition = `all ${t.durationNormal} ${t.easeSpring}`; } }}
