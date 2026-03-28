@@ -1,38 +1,80 @@
 /**
- * Copy Templates — Role-aware fallback when AI unavailable
+ * Copy Templates — Conversion-driven storytelling
  *
- * Canonical: SHOTFORGE_CANON.md RULE-G06
- * Each role × style gets distinct, tone-appropriate copy.
+ * NOT generic design system output.
+ * Each headline must create tension, curiosity, or desire.
+ * Narrative: hook → understand → desire → reward
+ *
+ * RULE-G06: Fallback when AI unavailable.
  */
 
 import type { GeneratedCopy, AppStyle } from "@/domain/types";
 
 type SlideType = "hero" | "feature-single" | "feature-dual" | "detail" | "result";
 
-// ─── Role-Aware Headline Templates ──────────────
+// ─── HERO: Must hook attention. Bold statement. Stop scrolling. ──
 
 const HERO_COPY: Record<AppStyle, Omit<GeneratedCopy, "contentOrigin">> = {
-  dark: { tagline: ["Your app,", "**elevated**"], badgeText: "NEW", bullets: [] },
-  light: { tagline: ["Simple.", "**Powerful.**"], badgeText: "FEATURED", bullets: [] },
-  bold: { tagline: ["**Bold**", "by design"], badgeText: "NEW", bullets: [] },
+  dark: {
+    tagline: ["Stop settling.", "**Start shipping.**"],
+    badgeText: "NEW",
+    bullets: [],
+  },
+  light: {
+    tagline: ["Less noise.", "**More clarity.**"],
+    badgeText: "FEATURED",
+    bullets: [],
+  },
+  bold: {
+    tagline: ["Most people", "**quit here.**"],
+    badgeText: "NEW",
+    bullets: [],
+  },
 };
+
+// ─── FEATURE: Create understanding. Specific benefit. ──
 
 const FEATURE_COPY: Record<AppStyle, string[][]> = {
-  dark: [["**Powerful** at", "every step"], ["Built for", "**speed**"], ["**Designed** to", "delight"]],
-  light: [["Everything in", "**one place**"], ["**Effortless**", "organization"], ["**Clean** and", "focused"]],
-  bold: [["**Break**", "the mold"], ["**Zero**", "compromises"], ["**Max**", "performance"]],
+  dark: [
+    ["Fix what's", "**holding you back**"],
+    ["See what", "**others miss**"],
+    ["Skip the", "**learning curve**"],
+  ],
+  light: [
+    ["Everything", "**where it should be**"],
+    ["No more", "**searching for it**"],
+    ["Works the way", "**you think**"],
+  ],
+  bold: [
+    ["Built for people", "who **ship**"],
+    ["Not another", "**dashboard**"],
+    ["Do more with", "**less effort**"],
+  ],
 };
+
+// ─── DETAIL: Show quality. Imply craft. Minimal. ──
 
 const DETAIL_COPY: Record<AppStyle, string[][]> = {
-  dark: [["Clean **interface**"], ["**Thoughtful** design"], ["Every **pixel**"]],
-  light: [["**Intuitive** layout"], ["**Clear** hierarchy"], ["Focused **view**"]],
-  bold: [["Every **detail**"], ["**Refined** feel"], ["Pure **craft**"]],
+  dark: [["Made with **intent**"]],
+  light: [["Every pixel **considered**"]],
+  bold: [["**Obsessively** crafted"]],
 };
 
+// ─── RESULT: Emotional payoff. Social proof. Reward. ──
+
 const RESULT_COPY: Record<AppStyle, string[][]> = {
-  dark: [["**Loved** by thousands"], ["**Trusted** daily"], ["Built to **last**"]],
-  light: [["**Trusted** worldwide"], ["Users **love** it"], ["**5 stars**"]],
-  bold: [["The **future**", "is here"], ["**Join** thousands"], ["**Made** for you"]],
+  dark: [
+    ["Finally,", "**it sticks**"],
+    ["People don't", "**just use it**"],
+  ],
+  light: [
+    ["The app they", "**come back to**"],
+    ["4.9★ for", "**a reason**"],
+  ],
+  bold: [
+    ["Join the ones", "who **stayed**"],
+    ["They tried", "**everything else**"],
+  ],
 };
 
 let featureIdx = 0;
@@ -58,7 +100,6 @@ export function getTemplateCopy(slideType: SlideType, style: AppStyle): Generate
     return { headline, contentOrigin: "template_fallback" };
   }
 
-  // feature-single, feature-dual
   const headlines = FEATURE_COPY[style];
   const headline = headlines[featureIdx % headlines.length];
   featureIdx++;

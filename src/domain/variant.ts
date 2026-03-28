@@ -26,7 +26,7 @@ function buildHeroSlide(filename: string, brand: string): HeroSlide {
   return {
     type: "hero",
     appName: brand,
-    tagline: ["Your app, **elevated**"],
+    tagline: ["Stop settling.", "**Start shipping.**"],
     bullets: [],
     showStars: true,
     screenshot: filename,
@@ -36,7 +36,7 @@ function buildHeroSlide(filename: string, brand: string): HeroSlide {
 function buildFeatureSlide(filename: string, angle: number = 5): FeatureSingleSlide {
   return {
     type: "feature-single",
-    headline: ["**Feature** headline"],
+    headline: ["Fix what's", "**holding you back**"],
     screenshot: filename,
     angle,
   };
@@ -45,7 +45,7 @@ function buildFeatureSlide(filename: string, angle: number = 5): FeatureSingleSl
 function buildDetailSlide(filename: string): DetailSlide {
   return {
     type: "detail",
-    headline: ["Clean **interface**"],
+    headline: ["Made with **intent**"],
     screenshot: filename,
     cropRule: "focus",
   };
@@ -54,7 +54,7 @@ function buildDetailSlide(filename: string): DetailSlide {
 function buildResultSlide(filename: string): ResultSlide {
   return {
     type: "result",
-    headline: ["**Loved** by thousands"],
+    headline: ["Finally,", "**it sticks**"],
     screenshot: filename,
   };
 }

@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "INVALID_JSON" }, { status: 400 });
   }
 
-  const slideType = body.slideType as "hero" | "feature-single" | "feature-dual";
+  const slideType = body.slideType as "hero" | "feature-single" | "feature-dual" | "detail" | "result";
   const style = (body.style || "dark") as AppStyle;
 
   // Attempt AI generation

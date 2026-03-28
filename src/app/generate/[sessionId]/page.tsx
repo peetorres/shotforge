@@ -48,11 +48,15 @@ export default function GeneratePage() {
     }
 
     async function runGeneration() {
+      const t0 = Date.now();
+      const log = (msg: string) => console.log(`[gen ${Date.now() - t0}ms] ${msg}`);
+      log("START — session: " + pending.sessionId + ", files: " + pending.filenames.length);
       try {
-        // Build initial variants with default copy
+        log("1. Creating variants (sync)");
         const variants = createVariants(pending.filenames, pending.brand, pending.brandColor);
+        log("2. Variants created — " + Object.keys(variants).length + " variants, " + variants.midnight.slides.length + " slides each");
 
-        // Generate AI copy for all variants
+        log("3. Starting AI copy generation (async, 3 variants × " + pending.filenames.length + " slides)");
         const copyResults = await generateAllVariants({
           filenames: pending.filenames,
           brand: pending.brand,
@@ -60,8 +64,9 @@ export default function GeneratePage() {
           brandColor: pending.brandColor,
           onProgress: setProgress,
         });
+        log("4. AI copy complete — midnight:" + copyResults.midnight.length + " clean:" + copyResults.clean.length + " vivid:" + copyResults.vivid.length);
 
-        // Merge AI copy into variant slides
+        log("5. Merging copy into variant slides");
         for (const variantId of ["midnight", "clean", "vivid"] as VariantId[]) {
           const copies = copyResults[variantId];
           const slides = variants[variantId].slides.map((slide, i) => {
@@ -83,9 +88,10 @@ export default function GeneratePage() {
             } as SlideConfig;
           });
           variants[variantId] = { ...variants[variantId], slides };
+          log("6. Merged " + variantId + " — " + slides.length + " slides");
         }
 
-        // Create project state
+        log("7. Creating project state");
         const project: ProjectState = {
           sessionId: pending.sessionId,
           brand: pending.brand,
@@ -99,11 +105,11 @@ export default function GeneratePage() {
           updatedAt: new Date().toISOString(),
         };
 
-        // Persist to localStorage
+        log("8. Persisting to localStorage");
         localStorage.setItem("shotforge-v2", JSON.stringify({ state: { project }, version: 1 }));
         localStorage.removeItem("shotforge-pending");
 
-        // Navigate to choose
+        log("9. Navigating to /choose/" + pending.sessionId);
         router.push(`/choose/${pending.sessionId}`);
       } catch (e) {
         console.error("[generate] failed:", e);
@@ -118,14 +124,23 @@ export default function GeneratePage() {
     <>
       <NavBar currentStep="generate" />
       {error ? (
-        <div style={{ minHeight: "100vh", paddingTop: 48, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-          <p style={{ color: "var(--red)", fontSize: 15, marginBottom: 16 }}>{error}</p>
-          <button
-            onClick={() => router.replace("/")}
-            style={{ padding: "8px 20px", background: "var(--surface-2)", color: "var(--text-2)", borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600 }}
-          >
-            ← Back to Create
-          </button>
+        <div style={{ minHeight: "100vh", paddingTop: 48, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+          <p style={{ color: "#ef4444", fontSize: 15, fontWeight: 600 }}>Something went wrong</p>
+          <p style={{ color: "#71717a", fontSize: 13, maxWidth: 360, textAlign: "center" }}>{error}</p>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button
+              onClick={() => { setError(null); setProgress(0); hasStarted.current = false; }}
+              style={{ padding: "8px 20px", background: "linear-gradient(135deg, #6366f1, #8b5cf6)", color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 600 }}
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => router.replace("/")}
+              style={{ padding: "8px 20px", background: "#1c1c1e", color: "#a1a1aa", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              ← Back
+            </button>
+          </div>
         </div>
       ) : (
         <ProgressScreen progress={progress} />
