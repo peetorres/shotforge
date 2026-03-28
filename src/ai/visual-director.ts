@@ -1,23 +1,80 @@
 /**
- * Visual Director — AI-powered screenshot analysis + narrative planning
+ * AI Creative Director — Visual Intelligence Engine
  *
- * Uses OpenAI Responses API with Structured Outputs.
- * AI is the director, deterministic engine is the renderer.
- * Graceful fallback: if AI fails, deterministic defaults take over.
+ * NOT a helper. A creative director that produces non-templated
+ * high-conversion visual compositions.
  *
- * DEC: AI is visual director, not final renderer.
+ * Features:
+ * - Risk levels: safe / bold / extreme
+ * - Focal dominance rule (70% visual weight to ONE element)
+ * - Reusable overlay library
+ * - Composition variation enforcement
+ * - Pre-render self-evaluation scores
  */
 
-import type {
-  ScreenshotIntent,
-  ProductUnderstanding,
-  SlidePlan,
-  VariantPlan,
-} from "./schemas";
+import type { SlidePlan, ProductUnderstanding, ScreenshotIntent } from "./schemas";
+import { CREATIVE_DIRECTOR_SCHEMA } from "./schemas";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const MODEL = "gpt-4o"; // multimodal, structured outputs
-const TIMEOUT = 15000;
+const MODEL = "gpt-4o";
+const TIMEOUT = 30000;
+
+// ─── Overlay Library (reusable, named) ──────────
+
+const OVERLAY_LIBRARY = `
+Available overlay styles (use these names):
+- glow-focus: soft radial glow behind key element
+- soft-circle-highlight: subtle circular highlight on UI element
+- directional-blur: motion blur suggesting depth/movement
+- edge-fade: gradient fade at edges for cinematic framing
+- depth-shadow: layered shadow for physical device feel
+`;
+
+// ─── System Prompt ──────────────────────────────
+
+function buildSystemPrompt(riskLevel: string): string {
+  const riskGuide = {
+    safe: "Conservative layouts. Centered devices. Standard crops. Safe spacing. No overlap.",
+    bold: "Strong variation. Dynamic angles. Smart crops. Asymmetric OK. Break patterns where beneficial. Default mode.",
+    extreme: "Break rules aggressively. Device partially off-screen OK. Heavy zoom (1.5-2.0x). Text overlapping device OK. Radical asymmetry. Unexpected compositions.",
+  }[riskLevel] || "bold";
+
+  return `You are the AI Creative Director for a world-class App Store screenshot generator.
+
+Your goal is to produce high-conversion visual compositions indistinguishable from top-performing App Store features.
+
+RISK LEVEL: ${riskLevel.toUpperCase()}
+${riskGuide}
+
+INTELLIGENCE RULES:
+
+1. FOCAL DOMINANCE — Each slide must have ONE dominant element that gets 70% of visual weight. Either text OR a UI element. NEVER split attention equally. Reject balanced layouts.
+
+2. DETECT FOCAL POINT — For each screenshot, identify the SPECIFIC UI element that matters most (progress ring at 65% completion, streak counter showing 14 days, green CTA button). Never say "center of screen".
+
+3. CROP IS MANDATORY — Every slide MUST have a defined crop strategy. "full" must be justified. Prefer "focus" or "zoom" for impact.
+
+4. BREAK LAYOUT PATTERNS — You MUST include across 6 slides: 1 text-only, 1 heavy zoom, 1 rotated device, 1 minimal clean, 1 high-energy. Reject uniform plans.
+
+5. HEADLINES — Max 6 words. No clichés. No "powerful/smart/easy". Use tension, recognition, transformation. Bold decisions only.
+
+6. NARRATIVE — Hook → Problem → Solution → Proof → Reward → Close.
+
+${OVERLAY_LIBRARY}
+
+Use ONLY these named overlay styles. Do not invent new ones.
+
+SELF-EVALUATION:
+After generating slides, score your own output 1-10 on:
+- visualImpact
+- variation
+- clarity
+- conversionPotential
+
+If any score < 7, internally revise before outputting.
+
+Take bold decisions. Avoid safe outputs. Prefer strong, opinionated compositions.`;
+}
 
 // ─── Product Understanding ──────────────────────
 
@@ -25,49 +82,27 @@ export async function analyzeProduct(
   appName: string,
   description: string,
 ): Promise<ProductUnderstanding | null> {
-  if (!OPENAI_API_KEY) {
-    console.log("[ai] No OPENAI_API_KEY — skipping product analysis");
-    return null;
-  }
-
+  if (!OPENAI_API_KEY) return null;
   try {
-    const res = await fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
+    const res = await fetchTimeout("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-      },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${OPENAI_API_KEY}` },
       body: JSON.stringify({
         model: MODEL,
-        messages: [{
-          role: "user",
-          content: `Analyze this app for App Store screenshot marketing.
-
-App name: ${appName}
-Description: ${description}
-
-Return a JSON object with:
-- category: app category (e.g., "productivity", "education", "fitness")
-- target_user: who uses this (specific, e.g., "founders who struggle with consistency")
-- core_problem: the main pain point (specific, emotional)
-- desired_outcome: what success looks like for the user
-- tone: recommended marketing tone (e.g., "honest and confrontational", "warm and supportive")
-- narrative_arc: array of 6 narrative steps from hook to identity`,
-        }],
+        messages: [
+          { role: "system", content: "Analyze apps for high-conversion marketing. Be brutally specific about user pain." },
+          { role: "user", content: `App: ${appName}\nDescription: ${description}\n\nReturn: category, target_user (extremely specific), core_problem (emotional pain), desired_outcome, tone, narrative_arc (6 steps)` },
+        ],
         response_format: {
           type: "json_schema",
           json_schema: {
-            name: "product_understanding",
-            strict: true,
+            name: "product_understanding", strict: true,
             schema: {
               type: "object",
               properties: {
-                category: { type: "string" },
-                target_user: { type: "string" },
-                core_problem: { type: "string" },
-                desired_outcome: { type: "string" },
-                tone: { type: "string" },
-                narrative_arc: { type: "array", items: { type: "string" } },
+                category: { type: "string" }, target_user: { type: "string" },
+                core_problem: { type: "string" }, desired_outcome: { type: "string" },
+                tone: { type: "string" }, narrative_arc: { type: "array", items: { type: "string" } },
               },
               required: ["category", "target_user", "core_problem", "desired_outcome", "tone", "narrative_arc"],
               additionalProperties: false,
@@ -76,226 +111,119 @@ Return a JSON object with:
         },
         max_tokens: 500,
       }),
-    }, TIMEOUT);
-
-    if (!res.ok) {
-      console.warn("[ai] Product analysis failed:", res.status);
-      return null;
-    }
-
+    }, 15000);
+    if (!res.ok) return null;
     const data = await res.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) return null;
-
-    return JSON.parse(content) as ProductUnderstanding;
-  } catch (e) {
-    console.warn("[ai] Product analysis error:", e instanceof Error ? e.message : e);
-    return null;
-  }
+    return JSON.parse(data.choices?.[0]?.message?.content ?? "null");
+  } catch { return null; }
 }
 
-// ─── Screenshot Analysis ────────────────────────
+// ─── Screenshot Analysis (deprecated, creative director handles all) ─
 
-export async function analyzeScreenshot(
-  imageBase64: string,
-  appName: string,
-  description: string,
-): Promise<ScreenshotIntent | null> {
-  if (!OPENAI_API_KEY) return null;
-
-  try {
-    const res = await fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [{
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `Analyze this app screenshot for App Store marketing.
-
-App: ${appName}
-Description: ${description}
-
-Identify:
-1. Screenshot type (dashboard/list/detail/progress/reward/onboarding/settings/unknown)
-2. Primary focal area (where the eye goes)
-3. Key visual element type
-4. Best crop strategy for a phone mockup
-5. Recommended prominence level (hero/support/detail)
-6. Emotional reading
-7. Best narrative role for this screen
-8. Your confidence (0-1)
-9. Up to 4 visual notes`,
-            },
-            {
-              type: "image_url",
-              image_url: { url: `data:image/png;base64,${imageBase64}`, detail: "low" },
-            },
-          ],
-        }],
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "screenshot_intent",
-            strict: true,
-            schema: {
-              type: "object",
-              properties: {
-                screenshot_type: { type: "string", enum: ["dashboard", "list", "detail", "progress", "reward", "onboarding", "settings", "unknown"] },
-                focal_area: { type: "string", enum: ["top", "upper-center", "center", "lower-center", "bottom"] },
-                key_element: { type: "string", enum: ["chart", "progress-ring", "card", "avatar", "mascot", "button", "number", "text", "illustration", "mixed"] },
-                crop_strategy: { type: "string", enum: ["top", "center", "focus-tight", "focus-wide", "full-bleed", "statement-no-device"] },
-                prominence: { type: "string", enum: ["hero", "support", "detail"] },
-                emotion: { type: "string", enum: ["calm", "intense", "playful", "disciplined", "rewarding", "technical", "premium", "cluttered"] },
-                suggested_role: { type: "string", enum: ["hook", "problem", "solution", "mechanism", "progress", "reward", "identity"] },
-                confidence: { type: "number" },
-                visual_notes: { type: "array", items: { type: "string" } },
-              },
-              required: ["screenshot_type", "focal_area", "key_element", "crop_strategy", "prominence", "emotion", "suggested_role", "confidence", "visual_notes"],
-              additionalProperties: false,
-            },
-          },
-        },
-        max_tokens: 400,
-      }),
-    }, TIMEOUT);
-
-    if (!res.ok) {
-      console.warn("[ai] Screenshot analysis failed:", res.status);
-      return null;
-    }
-
-    const data = await res.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) return null;
-
-    return JSON.parse(content) as ScreenshotIntent;
-  } catch (e) {
-    console.warn("[ai] Screenshot analysis error:", e instanceof Error ? e.message : e);
-    return null;
-  }
+export async function analyzeScreenshot(): Promise<ScreenshotIntent | null> {
+  return null;
 }
 
-// ─── Slide Plan Generation ──────────────────────
+// ─── Creative Director: Full Slide Plan ─────────
 
 export async function generateSlidePlan(
   appName: string,
   description: string,
   productUnderstanding: ProductUnderstanding | null,
-  screenshotIntents: (ScreenshotIntent | null)[],
+  _intents: (ScreenshotIntent | null)[],
   variantStyle: "dark" | "light" | "bold",
+  screenshotBase64s?: string[],
+  riskLevel: string = "bold",
 ): Promise<SlidePlan[] | null> {
   if (!OPENAI_API_KEY) return null;
-
-  const intentSummary = screenshotIntents.map((intent, i) =>
-    intent
-      ? `Screenshot ${i + 1}: ${intent.screenshot_type} (${intent.emotion}), focal: ${intent.focal_area}, key: ${intent.key_element}, suggested: ${intent.suggested_role}`
-      : `Screenshot ${i + 1}: not analyzed`,
-  ).join("\n");
 
   const productContext = productUnderstanding
     ? `Target: ${productUnderstanding.target_user}\nProblem: ${productUnderstanding.core_problem}\nOutcome: ${productUnderstanding.desired_outcome}\nTone: ${productUnderstanding.tone}`
     : `App: ${appName}\nDescription: ${description}`;
 
+  const styleGuide = {
+    dark: "Cinematic. Dark gradients. Strong glow. Layered depth.",
+    light: "Apple editorial. Soft backgrounds. Minimal effects. Content-forward.",
+    bold: "Brand energy. Strong colors. Dynamic angles. High contrast.",
+  }[variantStyle];
+
+  const content: Array<{ type: string; text?: string; image_url?: { url: string; detail: string } }> = [
+    {
+      type: "text",
+      text: `Create ${screenshotBase64s?.length ?? 6} slides for "${appName}".
+
+Product: ${productContext}
+Style: ${variantStyle} — ${styleGuide}
+Risk: ${riskLevel}
+Screenshots: ${screenshotBase64s?.length ?? 0} attached
+
+REQUIREMENTS:
+- Crop is MANDATORY for every slide. "full" must be justified.
+- At least 1 text-only (no device)
+- At least 1 heavy zoom (1.3x+)
+- At least 1 rotated device
+- At least 1 minimal clean
+- 70% visual weight to ONE dominant element per slide
+- Use overlay library names only
+- Self-evaluate: all scores must be ≥ 7`,
+    },
+  ];
+
+  if (screenshotBase64s) {
+    for (let i = 0; i < Math.min(screenshotBase64s.length, 6); i++) {
+      content.push({
+        type: "image_url",
+        image_url: { url: `data:image/png;base64,${screenshotBase64s[i]}`, detail: "low" },
+      });
+    }
+  }
+
   try {
-    const res = await fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
+    const res = await fetchTimeout("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-      },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${OPENAI_API_KEY}` },
       body: JSON.stringify({
         model: MODEL,
-        messages: [{
-          role: "user",
-          content: `You are an App Store screenshot art director. Create a ${screenshotIntents.length}-slide plan for the "${variantStyle}" variant.
-
-Product context:
-${productContext}
-
-Screenshot analysis:
-${intentSummary}
-
-Requirements:
-- Headlines: max 6 words, use **bold** for 1 key word
-- Avoid: powerful, simple, clean, better, easy
-- Prefer: tension, recognition, transformation, identity
-- Narrative: hook → problem → solution → mechanism → progress → identity
-- Mix layouts: some text-only (statement), some device-dominant
-- ${variantStyle === "dark" ? "Cinematic, confrontational" : variantStyle === "light" ? "Clear, empathetic" : "Bold, direct"} tone
-
-Return an array of slide plans.`,
-        }],
+        messages: [
+          { role: "system", content: buildSystemPrompt(riskLevel) },
+          { role: "user", content },
+        ],
         response_format: {
           type: "json_schema",
-          json_schema: {
-            name: "slide_plans",
-            strict: true,
-            schema: {
-              type: "object",
-              properties: {
-                slides: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      slide_role: { type: "string", enum: ["hook", "problem", "solution", "mechanism", "progress", "reward", "identity"] },
-                      headline: { type: "string" },
-                      subheadline: { type: ["string", "null"] },
-                      layout_mode: { type: "string", enum: ["statement", "hero", "focus", "feature", "detail", "reward"] },
-                      device_visibility: { type: "string", enum: ["none", "small", "medium", "large", "dominant"] },
-                      device_alignment: { type: "string", enum: ["left", "center", "right", "offset-left", "offset-right"] },
-                      device_rotation_deg: { type: "number" },
-                      crop_strategy: { type: "string", enum: ["top", "center", "focus-tight", "focus-wide", "full-bleed"] },
-                      background_style: { type: "string", enum: ["dark-glow", "soft-light", "brand-halo", "minimal-flat", "reward-burst"] },
-                      accent_color_source: { type: "string", enum: ["brand", "screenshot-dominant", "reward-warm", "cool-ui"] },
-                      visual_priority: { type: "string", enum: ["text-first", "balanced", "ui-first"] },
-                    },
-                    required: ["slide_role", "headline", "subheadline", "layout_mode", "device_visibility", "device_alignment", "device_rotation_deg", "crop_strategy", "background_style", "accent_color_source", "visual_priority"],
-                    additionalProperties: false,
-                  },
-                },
-              },
-              required: ["slides"],
-              additionalProperties: false,
-            },
-          },
+          json_schema: { name: "creative_output", strict: true, schema: CREATIVE_DIRECTOR_SCHEMA },
         },
-        max_tokens: 2000,
+        max_tokens: 3000,
       }),
     }, TIMEOUT);
 
     if (!res.ok) {
-      console.warn("[ai] Slide plan generation failed:", res.status);
+      console.warn("[creative-director] API:", res.status);
       return null;
     }
 
     const data = await res.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) return null;
+    const parsed = JSON.parse(data.choices?.[0]?.message?.content ?? "null");
+    if (!parsed?.slides) return null;
 
-    const parsed = JSON.parse(content);
-    return (parsed.slides ?? parsed) as SlidePlan[];
+    // Log creative decisions
+    console.log(`[creative-director] ${parsed.slides.length} slides (risk=${riskLevel})`);
+    for (const s of parsed.slides) {
+      const overlayNames = s.visual.overlays.map((o: { type: string }) => o.type).join(",");
+      console.log(`  [${s.role}] "${s.headline}" layout=${s.composition.layoutType} device=${s.composition.device.visible ? `${s.composition.device.alignment}@${s.composition.device.rotation}°` : "NONE"} crop=${s.composition.crop.strategy}(${s.composition.crop.focalPoint}) zoom=${s.composition.crop.zoom}x depth=${s.visual.depth} overlays=[${overlayNames}]`);
+    }
+
+    return parsed.slides as SlidePlan[];
   } catch (e) {
-    console.warn("[ai] Slide plan error:", e instanceof Error ? e.message : e);
+    console.warn("[creative-director]", e instanceof Error ? e.message : e);
     return null;
   }
 }
 
 // ─── Utility ────────────────────────────────────
 
-async function fetchWithTimeout(url: string, options: RequestInit, timeout: number): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeout);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
+async function fetchTimeout(url: string, opts: RequestInit, ms: number): Promise<Response> {
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), ms);
+  try { return await fetch(url, { ...opts, signal: c.signal }); }
+  finally { clearTimeout(t); }
 }

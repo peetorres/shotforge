@@ -92,6 +92,7 @@ export default function PreviewPage() {
           description: project.description,
           filenames: project.uploadedFiles,
           variantStyle: activeVariantId === "midnight" ? "dark" : activeVariantId === "clean" ? "light" : "bold",
+          riskLevel: "bold",
         }),
       });
       const data = await res.json();

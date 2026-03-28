@@ -1,27 +1,55 @@
 /**
- * AI Structured Output Schemas — Visual Intelligence System
+ * AI Creative Director — Output Schemas
  *
- * Used with OpenAI Responses API + Structured Outputs.
- * AI is a visual director, NOT the renderer.
- * All outputs feed into the deterministic Sharp+Satori engine.
+ * Rich composition plans: crop, overlays, visual direction, focal points.
+ * Not just headlines — full art direction.
  */
 
-// ─── Screenshot Intent (per screenshot) ─────────
-
-export interface ScreenshotIntent {
-  screenshot_type: "dashboard" | "list" | "detail" | "progress" | "reward" | "onboarding" | "settings" | "unknown";
-  focal_area: "top" | "upper-center" | "center" | "lower-center" | "bottom";
-  key_element: "chart" | "progress-ring" | "card" | "avatar" | "mascot" | "button" | "number" | "text" | "illustration" | "mixed";
-  crop_strategy: "top" | "center" | "focus-tight" | "focus-wide" | "full-bleed" | "statement-no-device";
-  prominence: "hero" | "support" | "detail";
-  emotion: "calm" | "intense" | "playful" | "disciplined" | "rewarding" | "technical" | "premium" | "cluttered";
-  suggested_role: "hook" | "problem" | "solution" | "mechanism" | "progress" | "reward" | "identity";
-  confidence: number;
-  visual_notes: string[];
+export interface DeviceComposition {
+  visible: boolean;
+  alignment: "center" | "left" | "right";
+  rotation: number;
+  scale: number;
 }
 
-// ─── Product Understanding (per project) ────────
+export interface CropPlan {
+  strategy: "focus" | "zoom" | "full" | "dramatic";
+  focalPoint: string;
+  zoom: number;
+  offsetX: number;
+  offsetY: number;
+}
 
+export interface Overlay {
+  type: "highlight" | "glow" | "circle" | "arrow" | "blur";
+  target: string;
+  style: "subtle" | "strong";
+}
+
+export interface VisualDirection {
+  background: "gradient" | "solid" | "blurred";
+  intensity: "low" | "medium" | "high";
+  overlays: Overlay[];
+  depth: "flat" | "layered" | "cinematic";
+}
+
+export interface SlidePlan {
+  role: "hook" | "problem" | "solution" | "proof" | "reward" | "close";
+  headline: string;
+  composition: {
+    layoutType: "text-only" | "device-focus" | "split" | "immersive";
+    device: DeviceComposition;
+    crop: CropPlan;
+  };
+  visual: VisualDirection;
+  priority: number;
+}
+
+export interface CreativeDirectorOutput {
+  slides: SlidePlan[];
+}
+
+// Backward compat
 export interface ProductUnderstanding {
   category: string;
   target_user: string;
@@ -31,87 +59,88 @@ export interface ProductUnderstanding {
   narrative_arc: string[];
 }
 
-// ─── Slide Plan (per slide) ─────────────────────
-
-export interface SlidePlan {
-  slide_role: "hook" | "problem" | "solution" | "mechanism" | "progress" | "reward" | "identity";
-  headline: string;
-  subheadline: string | null;
-  layout_mode: "statement" | "hero" | "focus" | "feature" | "detail" | "reward";
-  device_visibility: "none" | "small" | "medium" | "large" | "dominant";
-  device_alignment: "left" | "center" | "right" | "offset-left" | "offset-right";
-  device_rotation_deg: number;
-  crop_strategy: "top" | "center" | "focus-tight" | "focus-wide" | "full-bleed";
-  background_style: "dark-glow" | "soft-light" | "brand-halo" | "minimal-flat" | "reward-burst";
-  accent_color_source: "brand" | "screenshot-dominant" | "reward-warm" | "cool-ui";
-  visual_priority: "text-first" | "balanced" | "ui-first";
-}
-
-// ─── Full Variant Plan ──────────────────────────
-
-export interface VariantPlan {
-  variant_name: string;
-  slides: SlidePlan[];
-}
-
-// ─── JSON Schema definitions for Structured Outputs ─
-
-export const SCREENSHOT_INTENT_SCHEMA = {
-  type: "object" as const,
-  properties: {
-    screenshot_type: { type: "string" as const, enum: ["dashboard", "list", "detail", "progress", "reward", "onboarding", "settings", "unknown"] },
-    focal_area: { type: "string" as const, enum: ["top", "upper-center", "center", "lower-center", "bottom"] },
-    key_element: { type: "string" as const, enum: ["chart", "progress-ring", "card", "avatar", "mascot", "button", "number", "text", "illustration", "mixed"] },
-    crop_strategy: { type: "string" as const, enum: ["top", "center", "focus-tight", "focus-wide", "full-bleed", "statement-no-device"] },
-    prominence: { type: "string" as const, enum: ["hero", "support", "detail"] },
-    emotion: { type: "string" as const, enum: ["calm", "intense", "playful", "disciplined", "rewarding", "technical", "premium", "cluttered"] },
-    suggested_role: { type: "string" as const, enum: ["hook", "problem", "solution", "mechanism", "progress", "reward", "identity"] },
-    confidence: { type: "number" as const },
-    visual_notes: { type: "array" as const, items: { type: "string" as const } },
-  },
-  required: ["screenshot_type", "focal_area", "key_element", "crop_strategy", "prominence", "emotion", "suggested_role", "confidence", "visual_notes"],
-  additionalProperties: false,
+export type ScreenshotIntent = {
+  screenshot_type: string;
+  focal_area: string;
+  crop_strategy: string;
+  suggested_role: string;
+  confidence: number;
+  visual_notes: string[];
 };
 
-export const PRODUCT_UNDERSTANDING_SCHEMA = {
-  type: "object" as const,
-  properties: {
-    category: { type: "string" as const },
-    target_user: { type: "string" as const },
-    core_problem: { type: "string" as const },
-    desired_outcome: { type: "string" as const },
-    tone: { type: "string" as const },
-    narrative_arc: { type: "array" as const, items: { type: "string" as const } },
-  },
-  required: ["category", "target_user", "core_problem", "desired_outcome", "tone", "narrative_arc"],
-  additionalProperties: false,
-};
+// ─── JSON Schema for OpenAI Structured Outputs ──
 
-export const SLIDE_PLAN_SCHEMA = {
+export const CREATIVE_DIRECTOR_SCHEMA = {
   type: "object" as const,
   properties: {
-    slide_role: { type: "string" as const, enum: ["hook", "problem", "solution", "mechanism", "progress", "reward", "identity"] },
-    headline: { type: "string" as const },
-    subheadline: { type: ["string", "null"] as const },
-    layout_mode: { type: "string" as const, enum: ["statement", "hero", "focus", "feature", "detail", "reward"] },
-    device_visibility: { type: "string" as const, enum: ["none", "small", "medium", "large", "dominant"] },
-    device_alignment: { type: "string" as const, enum: ["left", "center", "right", "offset-left", "offset-right"] },
-    device_rotation_deg: { type: "number" as const },
-    crop_strategy: { type: "string" as const, enum: ["top", "center", "focus-tight", "focus-wide", "full-bleed"] },
-    background_style: { type: "string" as const, enum: ["dark-glow", "soft-light", "brand-halo", "minimal-flat", "reward-burst"] },
-    accent_color_source: { type: "string" as const, enum: ["brand", "screenshot-dominant", "reward-warm", "cool-ui"] },
-    visual_priority: { type: "string" as const, enum: ["text-first", "balanced", "ui-first"] },
+    slides: {
+      type: "array" as const,
+      items: {
+        type: "object" as const,
+        properties: {
+          role: { type: "string" as const, enum: ["hook", "problem", "solution", "proof", "reward", "close"] },
+          headline: { type: "string" as const },
+          composition: {
+            type: "object" as const,
+            properties: {
+              layoutType: { type: "string" as const, enum: ["text-only", "device-focus", "split", "immersive"] },
+              device: {
+                type: "object" as const,
+                properties: {
+                  visible: { type: "boolean" as const },
+                  alignment: { type: "string" as const, enum: ["center", "left", "right"] },
+                  rotation: { type: "number" as const },
+                  scale: { type: "number" as const },
+                },
+                required: ["visible", "alignment", "rotation", "scale"] as const,
+                additionalProperties: false,
+              },
+              crop: {
+                type: "object" as const,
+                properties: {
+                  strategy: { type: "string" as const, enum: ["focus", "zoom", "full", "dramatic"] },
+                  focalPoint: { type: "string" as const },
+                  zoom: { type: "number" as const },
+                  offsetX: { type: "number" as const },
+                  offsetY: { type: "number" as const },
+                },
+                required: ["strategy", "focalPoint", "zoom", "offsetX", "offsetY"] as const,
+                additionalProperties: false,
+              },
+            },
+            required: ["layoutType", "device", "crop"] as const,
+            additionalProperties: false,
+          },
+          visual: {
+            type: "object" as const,
+            properties: {
+              background: { type: "string" as const, enum: ["gradient", "solid", "blurred"] },
+              intensity: { type: "string" as const, enum: ["low", "medium", "high"] },
+              overlays: {
+                type: "array" as const,
+                items: {
+                  type: "object" as const,
+                  properties: {
+                    type: { type: "string" as const, enum: ["highlight", "glow", "circle", "arrow", "blur"] },
+                    target: { type: "string" as const },
+                    style: { type: "string" as const, enum: ["subtle", "strong"] },
+                  },
+                  required: ["type", "target", "style"] as const,
+                  additionalProperties: false,
+                },
+              },
+              depth: { type: "string" as const, enum: ["flat", "layered", "cinematic"] },
+            },
+            required: ["background", "intensity", "overlays", "depth"] as const,
+            additionalProperties: false,
+          },
+          priority: { type: "number" as const },
+        },
+        required: ["role", "headline", "composition", "visual", "priority"] as const,
+        additionalProperties: false,
+      },
+    },
   },
-  required: ["slide_role", "headline", "subheadline", "layout_mode", "device_visibility", "device_alignment", "device_rotation_deg", "crop_strategy", "background_style", "accent_color_source", "visual_priority"],
-  additionalProperties: false,
-};
-
-export const VARIANT_PLAN_SCHEMA = {
-  type: "object" as const,
-  properties: {
-    variant_name: { type: "string" as const },
-    slides: { type: "array" as const, items: SLIDE_PLAN_SCHEMA },
-  },
-  required: ["variant_name", "slides"],
+  required: ["slides"] as const,
   additionalProperties: false,
 };
