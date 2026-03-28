@@ -96,14 +96,14 @@ export default function CreatePage() {
           top: "25%", left: "50%", transform: "translateX(-50%)",
         }} />
 
-        {/* Badge */}
+        {/* Badge — Lumo brand mark */}
         <div style={{
-          display: "inline-flex", alignItems: "center", gap: 5,
-          padding: "4px 12px",
-          background: "rgba(99,102,241,0.06)", backdropFilter: "blur(8px)",
-          border: "1px solid rgba(99,102,241,0.1)",
-          borderRadius: 100, fontSize: 11, fontWeight: 600, color: "#6366f1",
-          marginBottom: 14,
+          display: "inline-flex", alignItems: "center", gap: 6,
+          padding: "5px 14px",
+          background: "rgba(99,102,241,0.05)", backdropFilter: "blur(12px)",
+          border: "1px solid rgba(99,102,241,0.08)",
+          borderRadius: 100, fontSize: 12, fontWeight: 600, color: "#6366f1",
+          marginBottom: 12, opacity: 0.85,
           animation: `fade-up ${t.durationSlow} ${t.easeDefault} both`,
         }}>
           <span style={{ animation: "breathe 2s ease infinite" }}>✦</span> Lumo
@@ -116,12 +116,12 @@ export default function CreatePage() {
           marginBottom: 8,
           animation: `fade-up ${t.durationSlow} ${t.easeDefault} 0.06s both`,
         }}>
-          Make it satisfying
+          Make it look
           <br />
           <span style={{
             background: "linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899)",
             WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-          }}>to look at.</span>
+          }}>right.</span>
         </h1>
 
         {/* Subtitle — Lumo tone: direct, confident, minimal */}
@@ -131,7 +131,7 @@ export default function CreatePage() {
           marginBottom: 24,
           animation: `fade-up ${t.durationSlow} ${t.easeDefault} 0.12s both`,
         }}>
-          App Store screenshots. Generated, not designed.
+          App Store screenshots that convert.
         </p>
 
         {/* Card — Glass Precision surface */}

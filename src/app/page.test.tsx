@@ -37,8 +37,8 @@ beforeEach(() => {
 describe("Create page — initial render", () => {
   it("renders headline", () => {
     render(<CreatePage />);
-    expect(screen.getByText("Make it satisfying")).toBeDefined();
-    expect(screen.getByText("to look at.")).toBeDefined();
+    expect(screen.getByText("Make it look")).toBeDefined();
+    expect(screen.getByText("right.")).toBeDefined();
   });
 
   it("renders App Name input and it is interactive", () => {

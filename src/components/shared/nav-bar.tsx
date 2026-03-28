@@ -24,27 +24,18 @@ export function NavBar({ currentStep, rightContent }: NavBarProps) {
         position: "fixed", top: 0, left: 0, right: 0, height: 48,
         background: "rgba(9,9,11,0.88)", backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
-        borderBottom: "1px solid var(--border)",
-        display: "flex", alignItems: "center", padding: "0 16px", gap: 10,
-        zIndex: 200,
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "0 16px", zIndex: 200,
       }}
     >
-      <span
-        style={{
-          fontSize: 14, fontWeight: 800, letterSpacing: "-0.3px",
-          background: "linear-gradient(135deg, var(--indigo), var(--purple))",
-          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-        }}
-      >
-        Shotforge
-      </span>
-
+      {/* Steps — centered, minimal */}
       <div
         style={{
-          position: "absolute", left: "50%", transform: "translateX(-50%)",
-          display: "flex", background: "var(--surface-2)",
-          borderRadius: "var(--r-sm)", overflow: "hidden",
-          border: "1px solid var(--border-subtle)",
+          display: "flex",
+          background: "rgba(255,255,255,0.03)",
+          borderRadius: 8, overflow: "hidden",
+          border: "1px solid rgba(255,255,255,0.04)",
         }}
       >
         {STEPS.map((s, i) => {
@@ -54,10 +45,10 @@ export function NavBar({ currentStep, rightContent }: NavBarProps) {
             <span
               key={s.key}
               style={{
-                padding: "5px 14px", fontSize: 11, fontWeight: 600,
-                color: isDone ? "var(--green)" : isActive ? "var(--text)" : "var(--text-3)",
-                background: isActive ? "var(--surface-3)" : "transparent",
-                transition: "all 0.15s var(--ease)",
+                padding: "5px 16px", fontSize: 11, fontWeight: 600,
+                color: isDone ? "#22c55e" : isActive ? "#fafafa" : "#52525b",
+                background: isActive ? "rgba(255,255,255,0.05)" : "transparent",
+                transition: "all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
               }}
             >
               {isDone ? "✓ " : ""}{s.label}
@@ -66,9 +57,12 @@ export function NavBar({ currentStep, rightContent }: NavBarProps) {
         })}
       </div>
 
-      <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
-        {rightContent}
-      </div>
+      {/* Right content */}
+      {rightContent && (
+        <div style={{ position: "absolute", right: 16, display: "flex", gap: 6, alignItems: "center" }}>
+          {rightContent}
+        </div>
+      )}
     </nav>
   );
 }

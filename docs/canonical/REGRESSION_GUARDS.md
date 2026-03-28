@@ -125,3 +125,9 @@ Before any release, verify:
 - [ ] RG-021: Glow must remain controlled (≤ 7% opacity, ≤ 100px blur)
 - [ ] RG-022: Glass blur must remain subtle (≤ 16px backdrop-filter)
 - [ ] RG-023: Preview must remain output-first, not UI-first
+- [ ] RG-024: Headline locked: "Make it look right." — no changes without DEC
+- [ ] RG-025: Subtitle locked: "App Store screenshots that convert."
+- [ ] RG-026: Navbar must NOT contain legacy "Shotforge" branding
+- [ ] RG-027: Drop zone must NOT use dashed border style
+- [ ] RG-028: CTA label locked: "Generate screenshots →"
+- [ ] RG-029: Lumo badge must remain present and subtle

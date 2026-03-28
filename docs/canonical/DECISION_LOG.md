@@ -133,6 +133,23 @@
   - CTA: "Generate screenshots →" (confirmed from DEC-015)
 - **Tone**: confident, minimal, sharp, product-first. No hype. No generic SaaS.
 
+### DEC-021: Final headline — "Make it look right."
+- **Date**: 2026-03-28
+- **Decision**: Locked. No alternatives.
+- **Why**: Simple, memorable, confident, timeless.
+
+### DEC-022: Final subtitle — "App Store screenshots that convert."
+- **Date**: 2026-03-28
+- **Decision**: Direct outcome. No AI mention. No fluff.
+
+### DEC-023: Navbar branding removal
+- **Date**: 2026-03-28
+- **Decision**: Remove "Shotforge" text. Centered step indicators only. Brand lives in badge.
+
+### DEC-024: Drop zone — solid border, glass surface
+- **Date**: 2026-03-28
+- **Decision**: No dashed borders. Solid 1px, backdrop blur, inner glow on drag.
+
 ### DEC-020: Phase 1 canonical baseline frozen
 - **Date**: 2026-03-28
 - **Decision**: Create + Preview + Visual System + Branding all frozen as Phase 1 canonical baseline.
