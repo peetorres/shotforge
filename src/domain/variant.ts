@@ -20,23 +20,23 @@ export const VARIANT_DEFINITIONS: readonly VariantDefinition[] = [
 // ─── Role-Specific Slide Builders ───────────────
 
 function buildHero(filename: string, brand: string): HeroSlide {
-  return { type: "hero", appName: brand, tagline: ["Stop settling.", "**Start shipping.**"], bullets: [], showStars: true, screenshot: filename };
+  return { type: "hero", appName: brand, tagline: ["You don't need", "**motivation.**"], bullets: [], showStars: true, screenshot: filename };
 }
 
 function buildStatement(): StatementSlide {
-  return { type: "statement", headline: ["You're not stuck.", "You're **scattered.**"], subline: "There's a difference." };
+  return { type: "statement", headline: ["You keep **starting.**"], subline: "Not finishing." };
 }
 
 function buildFeature(filename: string, angle: number): FeatureSingleSlide {
-  return { type: "feature-single", headline: ["Fix what's", "**holding you back**"], screenshot: filename, angle };
+  return { type: "feature-single", headline: ["Structure beats", "**willpower**"], screenshot: filename, angle };
 }
 
 function buildDetail(filename: string): DetailSlide {
-  return { type: "detail", headline: ["Made with **intent**"], screenshot: filename, cropRule: "focus" };
+  return { type: "detail", headline: ["No friction."], screenshot: filename, cropRule: "focus" };
 }
 
 function buildResult(filename: string): ResultSlide {
-  return { type: "result", headline: ["Finally,", "**it sticks**"], screenshot: filename };
+  return { type: "result", headline: ["Day 30.", "**Still here.**"], screenshot: filename };
 }
 
 let featureNum = 0;

@@ -1,55 +1,64 @@
 /**
- * Copy Templates — Conversion Narrative Engine
+ * Copy Templates — High-Conversion Psychological Copy
  *
- * NOT generic. Every line creates tension, curiosity, or identity.
- * Narrative: hook → problem → solution → mechanism → progress → identity
+ * Target: founders with inconsistent execution
+ * Tone: honest, slightly confrontational, empowering
+ * NOT motivational fluff. NOT generic SaaS.
  *
- * Forbidden words: powerful, simple, clean, better, easy
- * Required: contrast, contradiction, specificity, transformation
+ * Narrative: ego disruption → pain → insight → system → progress → identity
  */
 
 import type { GeneratedCopy, AppStyle } from "@/domain/types";
 
 type SlideType = "hero" | "feature-single" | "feature-dual" | "detail" | "result" | "statement" | "contrast";
 
-// ─── HOOK: Stop scrolling. Bold truth. ──────────
+// ─── 1. EGO DISRUPTION (challenge belief) ───────
 
 const HERO_COPY: Record<AppStyle, Omit<GeneratedCopy, "contentOrigin">> = {
-  dark: { tagline: ["Stop settling.", "**Start shipping.**"], badgeText: "NEW", bullets: [] },
-  light: { tagline: ["Less noise.", "**More done.**"], badgeText: "FEATURED", bullets: [] },
-  bold: { tagline: ["Most people", "**quit here.**"], badgeText: "NEW", bullets: [] },
+  dark: { tagline: ["You don't need", "**motivation.**"], badgeText: "NEW", bullets: [] },
+  light: { tagline: ["You already know", "**what to do.**"], badgeText: "FEATURED", bullets: [] },
+  bold: { tagline: ["Your problem isn't", "**the idea.**"], badgeText: "NEW", bullets: [] },
 };
 
-// ─── PROBLEM: "That's me." ──────────────────────
+// ─── 2. PAIN RECOGNITION (specific behavior) ────
 
 const STATEMENT_COPY: Record<AppStyle, { headline: string[]; subline: string }> = {
-  dark: { headline: ["You're not stuck.", "You're **scattered.**"], subline: "There's a difference." },
-  light: { headline: ["You know what", "**to do.**"], subline: "You just can't start." },
-  bold: { headline: ["Everyone has", "a **plan.**"], subline: "Until Monday morning." },
+  dark: { headline: ["You keep **starting.**"], subline: "Not finishing." },
+  light: { headline: ["Another Monday.", "Another **plan.**"], subline: "Same result." },
+  bold: { headline: ["You've read the books.", "**Nothing changed.**"], subline: "" },
 };
 
-// ─── SOLUTION: Introduce the system. ────────────
+// ─── 3+4. INSIGHT + SYSTEM (reframe + introduce) ─
 
 const FEATURE_COPY: Record<AppStyle, string[][]> = {
-  dark: [["Fix what's", "**holding you back**"], ["See what", "**others miss**"]],
-  light: [["Everything", "**where it should be**"], ["Works the way", "**you think**"]],
-  bold: [["Built for people", "who **ship**"], ["Not another", "**dashboard**"]],
+  dark: [
+    ["Structure beats", "**willpower**"],
+    ["One habit.", "**Every day.**"],
+  ],
+  light: [
+    ["Less deciding.", "**More doing.**"],
+    ["The system", "**remembers.**"],
+  ],
+  bold: [
+    ["Built for people", "who **start too much**"],
+    ["Not a planner.", "**A system.**"],
+  ],
 };
 
-// ─── MECHANISM: Show quality. ───────────────────
+// ─── MECHANISM (device-dominant, show the tool) ──
 
 const DETAIL_COPY: Record<AppStyle, string[][]> = {
-  dark: [["Made with **intent**"]],
-  light: [["Every pixel **considered**"]],
-  bold: [["**Obsessively** crafted"]],
+  dark: [["No friction."]],
+  light: [["Just open it."]],
+  bold: [["It **works.**"]],
 };
 
-// ─── PROGRESS: Emotional payoff. ────────────────
+// ─── 5. TANGIBLE PROGRESS (earned, specific) ─────
 
 const RESULT_COPY: Record<AppStyle, string[][]> = {
-  dark: [["Finally,", "**it sticks**"]],
-  light: [["The app they", "**come back to**"]],
-  bold: [["Join the ones", "who **stayed**"]],
+  dark: [["Day 30.", "**Still here.**"]],
+  light: [["12 week streak.", "**Your best.**"]],
+  bold: [["+20 XP.", "**You showed up.**"]],
 };
 
 let featureIdx = 0;
