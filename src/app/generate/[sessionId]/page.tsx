@@ -59,7 +59,7 @@ export default function GeneratePage() {
         // ─── AI VISUAL DIRECTOR (feature flag) ──────
         // Only runs if AI_VISUAL_DIRECTOR flag detected
         // Scope: slide roles, crop strategy, headlines
-        let aiPlan: { slides: Array<{ slide_role: string; headline: string; crop_strategy: string }> } | null = null;
+        let aiPlan: { slides: Array<Record<string, unknown>> } | null = null;
 
         try {
           log("2.5. Checking AI Visual Director...");
@@ -88,7 +88,10 @@ export default function GeneratePage() {
                 const detSlide = variants.midnight.slides[i];
                 const aiSlide = aiData.slidePlans[i];
                 const detHeadline = "headline" in detSlide ? (detSlide as { headline: string[] }).headline?.join(" ") : (detSlide as { tagline?: string[] }).tagline?.join(" ") ?? detSlide.type;
-                log(`  Slide ${i + 1}: DET="${detHeadline}" | AI="${aiSlide.headline}" (role: ${aiSlide.slide_role}, crop: ${aiSlide.crop_strategy})`);
+                const aiHeadline = (aiSlide as { headline?: string }).headline ?? "?";
+              const aiRole = (aiSlide as { role?: string }).role ?? "?";
+              const aiCrop = ((aiSlide as { composition?: { crop?: { strategy?: string; zoom?: number } } }).composition?.crop);
+              log(`  Slide ${i + 1}: DET="${detHeadline}" | AI="${aiHeadline}" (role: ${aiRole}, crop: ${aiCrop?.strategy ?? "?"}, zoom: ${aiCrop?.zoom ?? 1})`);
               }
               log("─── END COMPARISON ───");
             } else {
@@ -101,42 +104,29 @@ export default function GeneratePage() {
           log("2.6. AI Visual Director: failed (" + (aiErr instanceof Error ? aiErr.message : aiErr) + ") — using deterministic");
         }
 
-        // ─── Apply AI headlines if available ────────
+        // ─── Apply AI VISUAL ONLY (no headlines — deterministic copy is better) ────
         if (aiPlan?.slides) {
-          log("2.8. Applying AI headlines + crop to all variants");
+          log("2.8. Applying AI crop + zoom to all variants (headlines kept deterministic)");
           for (const variantId of ["midnight", "clean", "vivid"] as VariantId[]) {
             const slides = variants[variantId].slides.map((slide, i) => {
-              const aiSlide = aiPlan!.slides[i];
-              if (!aiSlide) return slide;
+              const aiSlide = aiPlan!.slides[i] as { composition?: { crop?: { zoom?: number; offsetX?: number; offsetY?: number; strategy?: string } }; headline?: string };
+              if (!aiSlide?.composition?.crop) return slide;
 
-              // Apply headline
-              const headlineLines = aiSlide.headline.split(/[,.]/).map((s: string) => s.trim()).filter(Boolean);
-              let updated = slide;
-
-              if (headlineLines.length > 0) {
-                if (slide.type === "hero") {
-                  updated = { ...updated, tagline: headlineLines } as SlideConfig;
-                } else if ("headline" in slide) {
-                  updated = { ...updated, headline: headlineLines } as SlideConfig;
-                }
+              const crop = aiSlide.composition.crop;
+              // Only apply to slides with device screenshots
+              if (slide.type === "feature-single" || slide.type === "detail" || slide.type === "result") {
+                // Enforce minimum zoom 1.3 for visible difference
+                const zoom = Math.max(1.3, crop.zoom ?? 1.3);
+                const updated = {
+                  ...slide,
+                  zoom,
+                  offsetX: crop.offsetX ?? 0,
+                  offsetY: crop.offsetY ?? 0,
+                } as SlideConfig;
+                log(`  Slide ${i + 1} (${slide.type}): AI crop applied → zoom=${zoom} offset=${crop.offsetX ?? 0},${crop.offsetY ?? 0} strategy=${crop.strategy ?? "focus"}`);
+                return updated;
               }
-
-              // Apply AI crop data (zoom + offset)
-              const crop = (aiSlide as { composition?: { crop?: { zoom?: number; offsetX?: number; offsetY?: number } } }).composition?.crop;
-              if (crop && "zoom" in updated === false) {
-                // Add zoom/offset to slide types that support it
-                if (updated.type === "feature-single" || updated.type === "detail" || updated.type === "result") {
-                  updated = {
-                    ...updated,
-                    zoom: crop.zoom ?? 1,
-                    offsetX: crop.offsetX ?? 0,
-                    offsetY: crop.offsetY ?? 0,
-                  } as SlideConfig;
-                  log(`  Applied AI crop to slide ${i + 1}: zoom=${crop.zoom} offset=${crop.offsetX},${crop.offsetY}`);
-                }
-              }
-
-              return updated;
+              return slide;
             });
             variants[variantId] = { ...variants[variantId], slides };
           }
