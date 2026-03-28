@@ -59,10 +59,17 @@ function buildResultSlide(filename: string): ResultSlide {
   };
 }
 
+let featureCounter = 0;
+
 function buildSlideForRole(role: SlideRole, filename: string, brand: string, variantAngle: number): SlideConfig {
   switch (role) {
     case "hero": return buildHeroSlide(filename, brand);
-    case "feature": return buildFeatureSlide(filename, variantAngle);
+    case "feature": {
+      // Alternate angle direction for visual variety
+      featureCounter++;
+      const angle = featureCounter % 2 === 0 ? variantAngle : -variantAngle;
+      return buildFeatureSlide(filename, angle);
+    }
     case "detail": return buildDetailSlide(filename);
     case "result": return buildResultSlide(filename);
   }
@@ -71,8 +78,8 @@ function buildSlideForRole(role: SlideRole, filename: string, brand: string, var
 // ─── Narrative Slide Sequence ───────────────────
 
 function buildNarrativeSlides(filenames: string[], brand: string, variantAngle: number): SlideConfig[] {
+  featureCounter = 0;
   return filenames.map((filename, index) => {
-    // Use narrative sequence, cycling if more screenshots than sequence length
     const role = NARRATIVE[index % NARRATIVE.length];
     return buildSlideForRole(role, filename, brand, variantAngle);
   });
@@ -82,9 +89,9 @@ function buildNarrativeSlides(filenames: string[], brand: string, variantAngle: 
 // Each variant has distinct composition feel
 
 const VARIANT_ANGLES: Record<VariantId, number> = {
-  midnight: 0,    // Cinematic precision — straight, no angle
-  clean: 0,       // Apple editorial — clean, no angle
-  vivid: 8,       // Brand energy — dynamic angle
+  midnight: 3,    // Cinematic precision — very subtle tilt
+  clean: 0,       // Apple editorial — perfectly straight
+  vivid: 10,      // Brand energy — dynamic angle
 };
 
 // ─── Variant Factory ────────────────────────────
