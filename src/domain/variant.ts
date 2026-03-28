@@ -1,70 +1,93 @@
 /**
  * Variant Definitions & Factory
  *
- * Canonical source: SHOTFORGE_CANON.md §4
- * Creates the 3 fixed variants with initial slide sets.
+ * Canonical: SHOTFORGE_CANON.md §4
+ * Narrative sequence: hero → feature → detail → feature → result → detail
+ * Each variant is a distinct creative direction, not just a color swap.
  */
 
-import type { SlideConfig, HeroSlide, FeatureSingleSlide } from "@appforge/screenshot-gen";
+import type { SlideConfig, HeroSlide, FeatureSingleSlide, DetailSlide, ResultSlide, SlideRole } from "@appforge/screenshot-gen";
 import type { Variant, VariantId, VariantDefinition } from "./types";
 
-// ─── Variant Definitions (SHOTFORGE_CANON §4) ───
+// Narrative sequence (mirrors NARRATIVE_SEQUENCE in screenshot-gen, inlined to avoid client bundle bloat)
+const NARRATIVE: SlideRole[] = ["hero", "feature", "detail", "feature", "result", "detail"];
+
+// ─── Variant Definitions ────────────────────────
 
 export const VARIANT_DEFINITIONS: readonly VariantDefinition[] = [
-  {
-    id: "midnight",
-    name: "Midnight",
-    style: "dark",
-    backgroundColor: "linear-gradient(160deg, #0D0D18, #1a1033)",
-    textColor: "#FFFFFF",
-  },
-  {
-    id: "clean",
-    name: "Clean",
-    style: "light",
-    backgroundColor: "linear-gradient(160deg, #F5F5F7, #E8E8ED)",
-    textColor: "#1D1D1F",
-  },
-  {
-    id: "vivid",
-    name: "Vivid",
-    style: "bold",
-    backgroundColor: "", // set dynamically from brandColor
-    textColor: "#FFFFFF",
-  },
+  { id: "midnight", name: "Midnight", style: "dark", backgroundColor: "linear-gradient(160deg, #0D0D18, #1a1033)", textColor: "#FFFFFF" },
+  { id: "clean", name: "Clean", style: "light", backgroundColor: "linear-gradient(160deg, #F5F5F7, #E8E8ED)", textColor: "#1D1D1F" },
+  { id: "vivid", name: "Vivid", style: "bold", backgroundColor: "", textColor: "#FFFFFF" },
 ] as const;
 
-// ─── Slide Builders ─────────────────────────────
+// ─── Role-Aware Slide Builders ──────────────────
 
 function buildHeroSlide(filename: string, brand: string): HeroSlide {
   return {
     type: "hero",
     appName: brand,
     tagline: ["Your app, **elevated**"],
-    bullets: ["Feature one", "Feature two", "Feature three", "Feature four"],
+    bullets: [],
     showStars: true,
     screenshot: filename,
   };
 }
 
-function buildFeatureSingleSlide(filename: string): FeatureSingleSlide {
+function buildFeatureSlide(filename: string, angle: number = 5): FeatureSingleSlide {
   return {
     type: "feature-single",
     headline: ["**Feature** headline"],
     screenshot: filename,
-    angle: 0,
+    angle,
   };
 }
 
-function buildSlides(filenames: string[], brand: string): SlideConfig[] {
-  return filenames.map((filename, index) =>
-    index === 0
-      ? buildHeroSlide(filename, brand)
-      : buildFeatureSingleSlide(filename),
-  );
+function buildDetailSlide(filename: string): DetailSlide {
+  return {
+    type: "detail",
+    headline: ["Clean **interface**"],
+    screenshot: filename,
+    cropRule: "focus",
+  };
 }
 
-// ─── Variant Factory (INV-001, INV-002, INV-008) ─
+function buildResultSlide(filename: string): ResultSlide {
+  return {
+    type: "result",
+    headline: ["**Loved** by thousands"],
+    screenshot: filename,
+  };
+}
+
+function buildSlideForRole(role: SlideRole, filename: string, brand: string, variantAngle: number): SlideConfig {
+  switch (role) {
+    case "hero": return buildHeroSlide(filename, brand);
+    case "feature": return buildFeatureSlide(filename, variantAngle);
+    case "detail": return buildDetailSlide(filename);
+    case "result": return buildResultSlide(filename);
+  }
+}
+
+// ─── Narrative Slide Sequence ───────────────────
+
+function buildNarrativeSlides(filenames: string[], brand: string, variantAngle: number): SlideConfig[] {
+  return filenames.map((filename, index) => {
+    // Use narrative sequence, cycling if more screenshots than sequence length
+    const role = NARRATIVE[index % NARRATIVE.length];
+    return buildSlideForRole(role, filename, brand, variantAngle);
+  });
+}
+
+// ─── Per-Variant Feature Angles ─────────────────
+// Each variant has distinct composition feel
+
+const VARIANT_ANGLES: Record<VariantId, number> = {
+  midnight: 0,    // Cinematic precision — straight, no angle
+  clean: 0,       // Apple editorial — clean, no angle
+  vivid: 8,       // Brand energy — dynamic angle
+};
+
+// ─── Variant Factory ────────────────────────────
 
 export function createVariants(
   filenames: string[],
@@ -74,10 +97,9 @@ export function createVariants(
   const result = {} as Record<VariantId, Variant>;
 
   for (const def of VARIANT_DEFINITIONS) {
-    const backgroundColor =
-      def.id === "vivid"
-        ? `linear-gradient(160deg, ${brandColor}33, ${brandColor}66, #0D0D18)`
-        : def.backgroundColor;
+    const backgroundColor = def.id === "vivid"
+      ? `linear-gradient(160deg, ${brandColor}33, ${brandColor}66, #0D0D18)`
+      : def.backgroundColor;
 
     result[def.id] = {
       id: def.id,
@@ -85,7 +107,7 @@ export function createVariants(
       style: def.style,
       backgroundColor,
       textColor: def.textColor,
-      slides: buildSlides(filenames, brand),
+      slides: buildNarrativeSlides(filenames, brand, VARIANT_ANGLES[def.id]),
     };
   }
 

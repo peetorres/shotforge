@@ -60,13 +60,12 @@ describe("createVariants (INV-001, INV-002, INV-008)", () => {
     }
   });
 
-  it("remaining slides are feature-single", () => {
+  it("slides follow narrative sequence (hero → feature → detail → ...)", () => {
     const variants = createVariants(filenames, brand, brandColor);
-    for (const id of ["midnight", "clean", "vivid"] as const) {
-      for (let i = 1; i < variants[id].slides.length; i++) {
-        expect(variants[id].slides[i].type).toBe("feature-single");
-      }
-    }
+    // With 3 files: hero, feature-single, detail
+    expect(variants.midnight.slides[0].type).toBe("hero");
+    expect(variants.midnight.slides[1].type).toBe("feature-single");
+    expect(variants.midnight.slides[2].type).toBe("detail");
   });
 
   it("hero slide has correct brand name", () => {
@@ -82,7 +81,8 @@ describe("createVariants (INV-001, INV-002, INV-008)", () => {
     const slides = variants.midnight.slides;
     expect(slides[0].type === "hero" && slides[0].screenshot).toBe("screen1.png");
     expect(slides[1].type === "feature-single" && slides[1].screenshot).toBe("screen2.png");
-    expect(slides[2].type === "feature-single" && slides[2].screenshot).toBe("screen3.png");
+    // Slide 2 is "detail" type (narrative sequence)
+    expect(slides[2].type === "detail" && slides[2].screenshot).toBe("screen3.png");
   });
 
   it("vivid variant background includes brand color", () => {

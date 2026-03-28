@@ -1,77 +1,72 @@
 /**
- * Copy Templates — Fallback when AI is unavailable
+ * Copy Templates — Role-aware fallback when AI unavailable
  *
  * Canonical: SHOTFORGE_CANON.md RULE-G06
- * Each variant style gets tonally distinct copy.
- * Midnight = premium/confident, Clean = simple/clear, Bold = energetic/direct
+ * Each role × style gets distinct, tone-appropriate copy.
  */
 
 import type { GeneratedCopy, AppStyle } from "@/domain/types";
 
-type SlideType = "hero" | "feature-single" | "feature-dual";
+type SlideType = "hero" | "feature-single" | "feature-dual" | "detail" | "result";
 
-const HERO_TEMPLATES: Record<AppStyle, Omit<GeneratedCopy, "contentOrigin">> = {
-  dark: {
-    tagline: ["Your app,", "**elevated**"],
-    badgeText: "NEW",
-    bullets: ["Powerful features", "Beautiful design", "Lightning fast", "Always reliable"],
-  },
-  light: {
-    tagline: ["Simple.", "**Powerful.** Yours."],
-    badgeText: "FEATURED",
-    bullets: ["Intuitive interface", "Seamless sync", "Smart insights", "Privacy first"],
-  },
-  bold: {
-    tagline: ["**Bold**", "by design"],
-    badgeText: "INTRODUCING",
-    bullets: ["Stand out", "Move faster", "Think bigger", "Ship sooner"],
-  },
+// ─── Role-Aware Headline Templates ──────────────
+
+const HERO_COPY: Record<AppStyle, Omit<GeneratedCopy, "contentOrigin">> = {
+  dark: { tagline: ["Your app,", "**elevated**"], badgeText: "NEW", bullets: [] },
+  light: { tagline: ["Simple.", "**Powerful.**"], badgeText: "FEATURED", bullets: [] },
+  bold: { tagline: ["**Bold**", "by design"], badgeText: "NEW", bullets: [] },
 };
 
-const FEATURE_HEADLINES: Record<AppStyle, string[][]> = {
-  dark: [
-    ["**Powerful** at", "every step"],
-    ["Built for", "**speed**"],
-    ["**Designed** to", "delight"],
-    ["Your data,", "**secured**"],
-    ["**Smart**", "notifications"],
-  ],
-  light: [
-    ["Everything in", "**one place**"],
-    ["**Effortless**", "organization"],
-    ["**Clean** and", "focused"],
-    ["**Track** what", "matters"],
-    ["Share with", "**anyone**"],
-  ],
-  bold: [
-    ["**Break**", "the mold"],
-    ["**Zero**", "compromises"],
-    ["**Max**", "performance"],
-    ["**Every** detail", "matters"],
-    ["The **future**", "is here"],
-  ],
+const FEATURE_COPY: Record<AppStyle, string[][]> = {
+  dark: [["**Powerful** at", "every step"], ["Built for", "**speed**"], ["**Designed** to", "delight"]],
+  light: [["Everything in", "**one place**"], ["**Effortless**", "organization"], ["**Clean** and", "focused"]],
+  bold: [["**Break**", "the mold"], ["**Zero**", "compromises"], ["**Max**", "performance"]],
 };
 
-let featureIndex = 0;
+const DETAIL_COPY: Record<AppStyle, string[][]> = {
+  dark: [["Clean **interface**"], ["**Thoughtful** design"], ["Every **pixel**"]],
+  light: [["**Intuitive** layout"], ["**Clear** hierarchy"], ["Focused **view**"]],
+  bold: [["Every **detail**"], ["**Refined** feel"], ["Pure **craft**"]],
+};
+
+const RESULT_COPY: Record<AppStyle, string[][]> = {
+  dark: [["**Loved** by thousands"], ["**Trusted** daily"], ["Built to **last**"]],
+  light: [["**Trusted** worldwide"], ["Users **love** it"], ["**5 stars**"]],
+  bold: [["The **future**", "is here"], ["**Join** thousands"], ["**Made** for you"]],
+};
+
+let featureIdx = 0;
+let detailIdx = 0;
+let resultIdx = 0;
 
 export function getTemplateCopy(slideType: SlideType, style: AppStyle): GeneratedCopy {
   if (slideType === "hero") {
-    return {
-      ...HERO_TEMPLATES[style],
-      contentOrigin: "template_fallback",
-    };
+    return { ...HERO_COPY[style], contentOrigin: "template_fallback" };
   }
 
-  const headlines = FEATURE_HEADLINES[style];
-  const headline = headlines[featureIndex % headlines.length];
-  featureIndex++;
+  if (slideType === "detail") {
+    const headlines = DETAIL_COPY[style];
+    const headline = headlines[detailIdx % headlines.length];
+    detailIdx++;
+    return { headline, contentOrigin: "template_fallback" };
+  }
 
-  return {
-    headline,
-    contentOrigin: "template_fallback",
-  };
+  if (slideType === "result") {
+    const headlines = RESULT_COPY[style];
+    const headline = headlines[resultIdx % headlines.length];
+    resultIdx++;
+    return { headline, contentOrigin: "template_fallback" };
+  }
+
+  // feature-single, feature-dual
+  const headlines = FEATURE_COPY[style];
+  const headline = headlines[featureIdx % headlines.length];
+  featureIdx++;
+  return { headline, contentOrigin: "template_fallback" };
 }
 
-export function resetFeatureIndex() {
-  featureIndex = 0;
+export function resetCopyIndices() {
+  featureIdx = 0;
+  detailIdx = 0;
+  resultIdx = 0;
 }
