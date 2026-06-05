@@ -5,26 +5,27 @@
 
 ## What Is Shotforge
 
-Shotforge is an AI-powered App Store screenshot generator. Users upload raw app screenshots, describe their app, and receive 3 complete screenshot set variations (Midnight, Clean, Vivid) ready for App Store submission. They choose one, optionally refine it in a visual editor, and export a ZIP with all required sizes.
+Shotforge is an AI-directed App Store creative system. Users upload raw app screenshots, describe their app briefly, and receive a curated set of premium finalists that feel like work from a strong App Store marketing designer. They compare finalists in one Preview surface, optionally refine the selected direction, and export with confidence.
 
 ## Current State
 
 - **Version**: 0.2.0-alpha.0 (V2 rebuild in progress)
 - **Branch**: `feat/shotforge-v2`
 - **V1 Status**: Deprecated. Source exists but is being replaced.
-- **V2 Status**: Canonical foundation complete. Implementation in progress.
+- **V2 Status**: Canon reset complete for the premium Preview-first direction. Implementation in progress.
 - **Engine**: `@appforge/screenshot-gen` — fully functional, untouched. Satori + Sharp compositor.
 
 ## Architecture Summary
 
 ```
-User Flow:  Create → Generate → Choose → Refine → Export
+User Flow:  Create → Generate → Preview
 
-Data Flow:  Form Input → Store → API (upload/AI) → Store (3 variants) → Render Engine → Export
+Internal:   Upload → Ingest → Perception → Direction → Composition
+          → Evaluation → Repair → Curation → Preview → Export
 
-State:      Zustand + localStorage persist. Variant-aware store.
-Render:     @appforge/screenshot-gen (Satori SVG → Sharp PNG composition)
-API:        Next.js Route Handlers (upload, generate-copy, preview, export)
+State:      Centralized client store + persisted session state
+Render:     Deterministic premium renderer on top of @appforge/screenshot-gen
+API:        Thin Next.js Route Handlers delegating to server services
 UI:         Next.js 15 App Router, React 19, Tailwind v4
 ```
 
@@ -34,13 +35,13 @@ These are resolved. Do not reopen.
 
 | ID | Decision | Reason |
 |----|----------|--------|
-| D-001 | 4-step flow: Create → Generate → Choose → Refine | Approved in UX prototyping (11 iterations) |
+| D-001 | 3-step visible flow: Create → Generate → Preview | Reduces friction and matches the approved product direction |
 | D-002 | 3 variants: Midnight (dark), Clean (light), Vivid (brand gradient) | User-approved |
 | D-003 | Direction C (One-Click AI) + Fixed Right Inspector | User chose after comparing 3 directions |
-| D-004 | All 6 slides visible in Refine, inspector fixed right | User chose after 4 iterations |
-| D-005 | Preview button hides inspector for clean App Store view | User-approved |
+| D-004 | Final Preview shell stays visually frozen while internals evolve | Preserves the approved shell |
+| D-005 | Preview/editor stay in one unified surface | Simplifies the user experience |
 | D-006 | Reuse @appforge/screenshot-gen as-is | Engine works, no changes needed |
-| D-007 | Zustand for client state, localStorage persist | Monorepo convention |
+| D-007 | Internal engine is staged and quality-gated | Required for premium output quality |
 | D-008 | TDD London School with anti-tests where they add value | User requirement |
 | D-009 | Fallback copy templates when AI unavailable | User must never be blocked |
 | D-010 | /tmp storage now, R2 later | Explicit phased approach |
@@ -49,9 +50,9 @@ These are resolved. Do not reopen.
 
 These must NEVER be violated:
 
-- **INV-001**: Exactly 3 variants always exist after generation (midnight, clean, vivid)
-- **INV-002**: Each variant has exactly N slides where N = number of uploaded screenshots
-- **INV-003**: Editing one variant NEVER affects another variant's data
+- **INV-001**: Preview only surfaces curated finalists, never raw attempts
+- **INV-002**: Top 3 finalists must be meaningfully distinct unless fewer than 3 candidates clear AAA threshold
+- **INV-003**: Editing one finalist NEVER affects another finalist's data
 - **INV-004**: Preview rendering must use the same engine as export (screenshot-gen)
 - **INV-005**: User manual edits are NEVER silently overwritten
 - **INV-006**: Session restore must recover full state or fail gracefully (never partial corruption)
@@ -61,11 +62,12 @@ These must NEVER be violated:
 
 | Risk | Severity | Mitigation |
 |------|----------|------------|
-| Cross-variant data leakage | Critical | Store isolation + integration tests |
+| Premium quality regression | Critical | Evaluator thresholds + fixture corpus + manual review |
+| Cross-finalist data leakage | Critical | Store isolation + integration tests |
 | Preview/export divergence | High | Same render pipeline, fidelity tests |
 | Lost edits on regenerate | High | Dirty tracking + user confirmation |
 | Broken restore after refresh | High | Schema versioning + validation |
-| Stale preview after refine edit | Medium | Debounced re-render on store change |
+| Stale preview after edit | Medium | Debounced re-render on store change |
 
 ## Mandatory Reading Order
 
@@ -75,7 +77,7 @@ Read these in order before doing ANY work:
 2. `docs/canonical/HANDOFF_CONTEXT.md` — current state, recent changes, next steps
 3. `docs/canonical/SHOTFORGE_CANON.md` — product truth, rules, entities, invariants
 4. `docs/canonical/STATE_MACHINE.md` — formal state transitions
-5. `docs/canonical/ARCHITECTURE.md` — system architecture, store shape, render pipeline
+5. `docs/canonical/ARCHITECTURE.md` — system architecture, state authority, render pipeline
 6. `docs/canonical/API_CONTRACTS.md` — all endpoint contracts
 7. `docs/canonical/DESIGN_SYSTEM.md` — tokens, components, layout rules
 8. `docs/canonical/PERSISTENCE_AND_RESTORE.md` — session lifecycle, recovery
@@ -84,7 +86,7 @@ Read these in order before doing ANY work:
 11. `docs/canonical/KNOWN_FAILURES_AND_GUARDS.md` — historical failure registry
 12. `docs/canonical/DECISION_LOG.md` — chronological decision history
 13. `docs/canonical/EXECUTION_PROTOCOL.md` — how to work in this repo
-14. `docs/canonical/IMPLEMENTATION_ROADMAP.md` — phased execution plan
+14. `docs/canonical/IMPLEMENTATION_ROADMAP.md` — premium-engine execution phases
 
 ## Checklists
 

@@ -6,18 +6,18 @@
  */
 
 import type { SlideConfig } from "@appforge/screenshot-gen";
+import type { AppStyle } from "../core/contracts";
+import type { FinalistSet } from "../core/contracts";
 
 // ─── Flow ───────────────────────────────────────
 
-export type FlowStep = "create" | "generate" | "choose" | "refine";
+export type FlowStep = "create" | "generate" | "preview";
 
 // ─── Variants ───────────────────────────────────
 
 export type VariantId = "midnight" | "clean" | "vivid";
 
 export const VARIANT_IDS: readonly VariantId[] = ["midnight", "clean", "vivid"] as const;
-
-export type AppStyle = "dark" | "light" | "bold";
 
 // ─── Content Origin (SHOTFORGE_CANON §3.4) ──────
 
@@ -58,6 +58,8 @@ export interface ProjectState {
   readonly uploadedFiles: string[];
   readonly variants: Record<VariantId, Variant>;
   readonly selectedVariantId: VariantId | null;
+  readonly finalists?: FinalistSet | null;
+  readonly selectedFinalistId?: string | null;
   readonly step: FlowStep;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -127,9 +129,45 @@ export function isVariantId(value: unknown): value is VariantId {
 }
 
 export function isFlowStep(value: unknown): value is FlowStep {
-  return typeof value === "string" && ["create", "generate", "choose", "refine"].includes(value);
+  return typeof value === "string" && ["create", "generate", "preview"].includes(value);
 }
 
 export function isValidHex(value: unknown): value is string {
   return typeof value === "string" && /^#[0-9A-Fa-f]{6}$/.test(value);
 }
+
+export type {
+  AppStyle,
+  BackgroundTreatment,
+  CampaignBoard,
+  CampaignContinuityCue,
+  CampaignFrameEnergy,
+  CampaignFramePlan,
+  CampaignFrameRole,
+  CampaignSideBias,
+  CampaignVisualWeight,
+  BoundingBox,
+  ContractName,
+  Finalist,
+  FinalistSet,
+  FocalCropProfile,
+  LayoutFamily,
+  NarrativeDirection,
+  NarrativeThesis,
+  OverlayBehavior,
+  ProjectBrief,
+  ProjectScreenshot,
+  RepairAction,
+  RepairPriority,
+  RepairTarget,
+  ScoreBreakdown,
+  ScoredSequence,
+  ScreenshotAnalysis,
+  SequenceCandidate,
+  SequenceRole,
+  SequenceRoleAssignment,
+  TechnicalQualityCheck,
+  TypographyFamily,
+} from "../core/contracts";
+
+export { CONTRACT_NAMES } from "../core/contracts";

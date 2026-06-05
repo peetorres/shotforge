@@ -42,14 +42,14 @@
 - **Anti-test**: `persistence.test.ts` — "restore fails gracefully with corrupted data"
 - **Docs**: PERSISTENCE_AND_RESTORE.md §3, §6
 
-### RG-005: Stale Preview After Refine Edit
-- **Risk**: User changes headline but preview still shows old text
+### RG-005: Stale Preview After Edit
+- **Risk**: User changes a slide or finalist field but preview still shows old output
 - **Severity**: Medium (trust violation)
 - **Origin**: Preview not re-triggered after store mutation
 - **Trigger**: Store mutation doesn't invalidate cached preview
 - **Prevention**: usePreview hook watches store slice; debounced re-render on change
 - **Tests**: `usePreview.test.ts` — "re-fetches when slide data changes"
-- **Docs**: ARCHITECTURE.md §4, STATE_MACHINE.md side effects
+- **Docs**: ARCHITECTURE.md §9, STATE_MACHINE.md side effects
 
 ### RG-006: Silent Export Failure
 - **Risk**: User clicks Export, nothing happens, no error shown
@@ -70,12 +70,12 @@
 - **Docs**: API_CONTRACTS.md POST /upload, SHOTFORGE_CANON.md RULE-V*
 
 ### RG-008: State Machine Invalid Transition
-- **Risk**: User lands on /refine without having generated variants
+- **Risk**: User lands in Preview edit mode without valid finalist state
 - **Severity**: Medium (crash or empty UI)
 - **Origin**: Direct URL navigation, broken redirect, or skipped step
-- **Trigger**: Deep link to step that requires prior state
+- **Trigger**: Deep link to compatibility routes or edit state without valid finalist data
 - **Prevention**: Route guards check store state; redirect if preconditions not met
-- **Tests**: `integration/full-flow.test.ts` — "deep link to refine without data redirects"
+- **Tests**: `integration/full-flow.test.ts` — "deep link to preview edit without data redirects"
 - **Docs**: STATE_MACHINE.md, PERSISTENCE_AND_RESTORE.md §5
 
 ### RG-009: Schema Mismatch on Restore
@@ -96,6 +96,15 @@
 - **Tests**: `generate-copy.test.ts` — "returns template when AI unavailable"
 - **Docs**: SHOTFORGE_CANON.md RULE-G06, API_CONTRACTS.md POST /generate-copy
 
+### RG-030: Premium output quality regression
+- **Risk**: The product technically works but finalists become generic, weak, or visually redundant
+- **Severity**: Critical
+- **Origin**: Evaluator thresholds too weak, renderer grammar too narrow, or prompt drift
+- **Trigger**: Candidates pass functional tests but fail benchmark-level visual review
+- **Prevention**: Weighted evaluator thresholds, Top 3 distinction rule, fixture corpus, and manual visual acceptance review
+- **Tests**: `premium-visual-acceptance.test.ts` and fixture-based finalist review
+- **Docs**: SHOTFORGE_CANON.md RULE-Q*, DESIGN_SYSTEM.md §6
+
 ---
 
 ## Guard Verification Checklist
@@ -109,7 +118,7 @@ Before any release, verify:
 - [ ] RG-005: Edit headline, verify preview updates
 - [ ] RG-006: Kill server during export, verify error shown
 - [ ] RG-007: Upload a .txt file, verify rejected
-- [ ] RG-008: Navigate directly to /refine/fake-id, verify redirect
+- [ ] RG-008: Navigate directly to invalid preview/edit route, verify redirect
 - [ ] RG-009: Change persist version, verify migration or clean reset
 - [ ] RG-010: Remove API key, verify generation completes with fallback
 - [ ] RG-011: Create page has no vertical scroll on standard laptop (1440×900)
@@ -131,3 +140,4 @@ Before any release, verify:
 - [ ] RG-027: Drop zone must NOT use dashed border style
 - [ ] RG-028: CTA label locked: "Generate screenshots →"
 - [ ] RG-029: Lumo badge must remain present and subtle
+- [ ] RG-030: Finalists meet benchmark-level premium quality on fixture corpus

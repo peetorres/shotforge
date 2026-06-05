@@ -1,184 +1,200 @@
 # API CONTRACTS — Shotforge V2
 
-> Every endpoint defined formally. No vague APIs.
+> Formal HTTP contracts. Routes stay thin; server services own orchestration.
 
 ## POST /api/upload
 
-**Purpose**: Validate and persist screenshot files to server temp storage.
+**Purpose:** Validate and persist screenshot files to temp storage.
 
 ### Request
-```
-Content-Type: multipart/form-data
-Body:
-  sessionId: string (nanoid)
-  files: File[] (1-6 images)
-```
 
-### Response — Success (200)
+`multipart/form-data`
+
+- `sessionId: string`
+- `files: File[]`
+
+### Success
+
 ```json
-{ "filenames": ["screen1.png", "screen2.png", ...] }
+{ "filenames": ["screen1.png", "screen2.png"] }
 ```
 
-### Response — Error (400)
+### Error
+
 ```json
-{ "error": "INVALID_TYPE" | "TOO_SMALL" | "TOO_LARGE" | "INVALID_IMAGE" | "NO_FILES" | "SESSION_TOO_LARGE", "filename": "screen1.txt" }
+{ "error": "INVALID_TYPE" | "TOO_SMALL" | "TOO_LARGE" | "INVALID_IMAGE" | "NO_FILES" | "SESSION_TOO_LARGE", "filename": "screen1.png" }
 ```
 
-### Validation Rules
-| Check | Rule | Error Code |
-|-------|------|------------|
-| MIME type | RULE-V01: image/png or image/jpeg | INVALID_TYPE |
-| Dimensions | RULE-V02: width >= 390, height >= 844 | TOO_SMALL |
-| File size | RULE-V03: <= 10MB | TOO_LARGE |
-| Total size | RULE-V04: session total <= 40MB | SESSION_TOO_LARGE |
-| File count | RULE-C03: 1-6 files | NO_FILES |
+### Notes
 
-### Behavior
-- Creates `/tmp/{sessionId}/` directory
-- Saves validated files with original names
-- Returns ordered filenames array
-- Idempotent: re-uploading replaces files
+- creates `/tmp/{sessionId}/`
+- replaces prior upload for same session
+- server remains authoritative for temp files only
 
-### Timeout: 30s
+## POST /api/analyze
 
----
+**Purpose:** Run ingest, perception, direction, and composition preparation for a session.
+
+### Request
+
+```json
+{
+  "sessionId": "abc123",
+  "brand": "Sensei",
+  "description": "Gamified learning for founders",
+  "filenames": ["screen1.png", "screen2.png"],
+  "variantStyle": "dark",
+  "riskLevel": "safe"
+}
+```
+
+### Success
+
+```json
+{
+  "projectBrief": {},
+  "screenshotAnalyses": [],
+  "directions": [],
+  "candidates": [],
+  "timings": {},
+  "aiUsed": true
+}
+```
+
+### Error
+
+```json
+{ "error": "ANALYZE_FAILED" }
+```
+
+### Notes
+
+- route is a thin adapter
+- internal service may use deterministic fixtures or live multimodal analysis
+- failure should degrade to safer composition paths, not block the user
 
 ## POST /api/generate-copy
 
-**Purpose**: Generate AI marketing copy for one slide.
+**Purpose:** Generate or repair copy for one slide role.
 
 ### Request
+
 ```json
 {
   "brand": "Sensei",
   "description": "Gamified learning for founders",
-  "slideType": "hero" | "feature-single" | "feature-dual",
+  "slideRole": "hero",
   "screenshotFilename": "screen1.png",
-  "style": "dark" | "light" | "bold",
+  "style": "dark",
   "variantName": "Midnight"
 }
 ```
 
-### Response — Success (200)
+### Success
+
 ```json
 {
+  "headline": ["Build habits", "**that stick**"],
   "tagline": ["Your app, **elevated**"],
-  "badgeText": "NEW RELEASE",
-  "bullets": ["Feature one", "Feature two", "Feature three", "Feature four"],
-  "headline": ["**Smart** learning"],
+  "badgeText": "NEW",
+  "bullets": ["Track progress", "Stay consistent"],
   "contentOrigin": "generated_by_ai"
 }
 ```
-Fields present depend on `slideType`:
-- hero: tagline, badgeText, bullets
-- feature-single/dual: headline
 
-### Response — Error (503)
-```json
-{ "error": "AI_UNAVAILABLE", "contentOrigin": "template_fallback" }
-```
+### Fallback
 
-### Fallback Behavior (RULE-G06)
-If ANTHROPIC_API_KEY missing or API call fails:
-- Return HTTP 200 (not 503) with template copy
-- Set `contentOrigin: "template_fallback"`
-- Caller treats it as success — user is NEVER blocked
+If AI is unavailable:
 
-### Timeout: 15s
-### Cache: None (each call is unique per variant/style combination)
+- return `200`
+- return premium fallback copy
+- set `contentOrigin: "template_fallback"`
 
----
+The user must never be blocked by model failure.
 
 ## POST /api/preview
 
-**Purpose**: Render one slide as a half-resolution PNG for live preview.
+**Purpose:** Render one selected finalist slide as preview PNG.
 
 ### Request
+
 ```json
 {
   "sessionId": "abc123",
-  "slide": { /* SlideConfig */ },
+  "slide": {},
   "brand": "Sensei",
   "brandColor": "#6366F1",
-  "style": "dark" | "light" | "bold",
-  "outputSize": "6.7" | "6.1"
+  "style": "dark",
+  "backgroundTreatment": "brand-glow-editorial",
+  "typographySystem": "editorial-sans-tight",
+  "outputSize": "6.7"
 }
 ```
 
-### Response — Success (200)
+### Success
+
 ```json
-{ "image": "base64-encoded-png-string" }
+{ "image": "base64-encoded-png" }
 ```
 
-### Response — Error
+### Error
+
 | Code | Error | Reason |
 |------|-------|--------|
-| 404 | SESSION_NOT_FOUND | /tmp/{sessionId} doesn't exist |
-| 400 | INVALID_SIZE | outputSize not in ["6.7", "6.1"] |
-| 500 | RENDER_FAILED | screenshot-gen threw error |
+| 404 | `SESSION_NOT_FOUND` | temp assets missing |
+| 400 | `INVALID_SIZE` | invalid output size |
+| 500 | `RENDER_FAILED` | render pipeline failed |
 
-### Behavior
-- Reads screenshot from `/tmp/{sessionId}/{filename}`
-- Calls `composeSlide()` from screenshot-gen
-- Resizes to half-width for speed
-- Returns base64 PNG
+### Notes
 
-### Timeout: 30s
-### Debounce: Client-side 300ms (not server-enforced)
-
----
+- preview uses the same render pipeline as export
+- only resolution differs
+- derived backgrounds and typography must flow through the same renderer inputs
 
 ## POST /api/export
 
-**Purpose**: Render all slides at full resolution, return as ZIP.
+**Purpose:** Export the selected finalist as ZIP.
 
 ### Request
+
 ```json
 {
   "sessionId": "abc123",
-  "projectState": {
+  "selectedFinalist": {
     "brand": "Sensei",
     "brandColor": "#6366F1",
     "style": "dark",
-    "slides": [ /* SlideConfig[] */ ],
-    "uploadedFiles": ["screen1.png", ...]
+    "backgroundTreatment": "brand-glow-editorial",
+    "typographySystem": "editorial-sans-tight",
+    "slides": []
   },
   "sizes": ["6.7", "6.1"]
 }
 ```
 
-### Response — Success (200)
-```
-Content-Type: application/zip
-Content-Disposition: attachment; filename="shotforge-sensei.zip"
-Body: binary ZIP data
-```
+### Success
 
-### Response — Error
+Binary ZIP response with:
+
+- `Content-Type: application/zip`
+- `Content-Disposition: attachment; filename="shotforge-{brand}.zip"`
+
+### Error
+
 | Code | Error | Reason |
 |------|-------|--------|
-| 404 | SESSION_NOT_FOUND | /tmp/{sessionId} doesn't exist |
-| 500 | EXPORT_FAILED | Render or archive error |
+| 404 | `SESSION_NOT_FOUND` | temp assets missing |
+| 500 | `EXPORT_FAILED` | render or archive failed |
 
-### ZIP Contents
-```
-shotforge-sensei/
-  sensei_01_hero_6.7.png
-  sensei_01_hero_6.1.png
-  sensei_02_feature-single_6.7.png
-  sensei_02_feature-single_6.1.png
-  ...
-```
+### Notes
 
-### Timeout: 60s
-### Idempotent: Yes (same input = same output)
+- export must reflect current selected finalist state exactly
+- same rendering config family as preview
 
----
+## Versioning Rule
 
-## Contract Versioning
+Breaking contract changes require:
 
-All contracts are v1. If breaking changes are needed:
-1. Add `"contractVersion": 2` to request
-2. Server supports both v1 and v2 during migration
-3. Document change in DECISION_LOG.md
-4. Update this file
+1. explicit version bump in request payload where needed
+2. DECISION_LOG update
+3. canonical doc update

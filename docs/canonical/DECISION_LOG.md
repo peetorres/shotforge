@@ -182,3 +182,51 @@
 - **Alternatives Rejected**: Universal anti-tests (theatrical for non-behavioral tests)
 - **Affected Docs**: TEST_STRATEGY.md
 - **Regression Risk**: None
+
+### DEC-025: Product truth moves to Create → Generate → Preview
+- **Date**: 2026-03-28
+- **Context**: The implemented and desired product experience converged on a unified Preview surface rather than a lasting Choose/Refine split.
+- **Decision**: The official product model is now a 3-step flow: Create, Generate, Preview. Export remains an action within Preview.
+- **Alternatives Rejected**: Preserving Choose and Refine as the lasting user-facing product split.
+- **Affected Docs**: SHOTFORGE_CANON.md, ARCHITECTURE.md, STATE_MACHINE.md, API_CONTRACTS.md, IMPLEMENTATION_ROADMAP.md
+- **Regression Risk**: Route-state drift during migration
+
+### DEC-026: Finalists are curated, not raw generations
+- **Date**: 2026-03-28
+- **Context**: The product must not expose mediocre or weak outputs simply because they were generated.
+- **Decision**: Shotforge internally generates multiple candidates, scores them, repairs weak ones, and surfaces curated finalists only.
+- **Alternatives Rejected**: Generate exactly three and show them directly.
+- **Affected Docs**: SHOTFORGE_CANON.md, ARCHITECTURE.md, STATE_MACHINE.md
+- **Regression Risk**: Quality gating could increase latency if not bounded
+
+### DEC-027: Hybrid creative direction system
+- **Date**: 2026-03-28
+- **Context**: The product must reach premium output quality without becoming an image-generation black box.
+- **Decision**: AI owns perception, narrative direction, composition intent, and scoring inputs; deterministic rendering owns visual execution and export fidelity.
+- **Alternatives Rejected**: Pure template system, AI bitmap generation for final visuals
+- **Affected Docs**: SHOTFORGE_CANON.md, ARCHITECTURE.md, API_CONTRACTS.md
+- **Regression Risk**: Ambiguity between AI and renderer responsibilities if contracts are weak
+
+### DEC-028: Deterministic derived backgrounds only
+- **Date**: 2026-03-28
+- **Context**: The product should feel premium and controllable, not unstable or prompt-lottery-driven.
+- **Decision**: Backgrounds are derived deterministically from brand and screenshot context. AI may choose treatment style, but not paint final bitmap backgrounds.
+- **Alternatives Rejected**: Full AI-generated bitmap backgrounds
+- **Affected Docs**: SHOTFORGE_CANON.md, ARCHITECTURE.md, DESIGN_SYSTEM.md
+- **Regression Risk**: Renderer may lag creative ambition if background grammar stays too narrow
+
+### DEC-029: Curated premium typography system
+- **Date**: 2026-03-28
+- **Context**: Typography is one of the clearest separators between average output and premium output.
+- **Decision**: The engine must select from a curated premium typography library rather than inventing arbitrary font behavior.
+- **Alternatives Rejected**: Single default font stack, unrestricted typography generation
+- **Affected Docs**: SHOTFORGE_CANON.md, ARCHITECTURE.md, DESIGN_SYSTEM.md
+- **Regression Risk**: Limited expressiveness if the library is too small
+
+### DEC-030: AAA visual grammar from benchmark references
+- **Date**: 2026-03-28
+- **Context**: The product needs a shared standard for what "acceptable premium" means.
+- **Decision**: The engine and evaluator must follow an explicit visual grammar derived from benchmark App Store references: one thesis per slide, strong hierarchy, intentional device role, deterministic backgrounds, and differentiated finalists.
+- **Alternatives Rejected**: Relying on vague prompt language like "make it premium"
+- **Affected Docs**: DESIGN_SYSTEM.md, SHOTFORGE_CANON.md
+- **Regression Risk**: Benchmark drift if not backed by a fixed reference corpus

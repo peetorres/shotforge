@@ -16,7 +16,7 @@
 **What**: Pure functions, validation rules, type guards, invariants.
 **Where**: `src/domain/*.test.ts`
 **Mock**: Nothing (pure functions)
-**Maps to**: RULE-V*, RULE-C*, INV-*
+**Maps to**: RULE-V*, RULE-C*, INV-*, RULE-Q*
 
 | Test | Rule/Invariant | Risk Protected |
 |------|---------------|----------------|
@@ -25,8 +25,8 @@
 | validateDimensions rejects 100x100 | RULE-V02 | Undersized image |
 | validateBrandColor rejects "red" | RULE-V05 | Invalid color crashes render |
 | validateAppName rejects empty | RULE-C01 | Empty project name |
-| createVariants returns 3 | INV-001 | Wrong variant count |
-| each variant has N slides | INV-002 | Slide count mismatch |
+| finalist score schema is valid | RULE-Q02 | evaluator drift |
+| threshold constants load correctly | RULE-Q01 | weak outputs surfaced |
 
 ### 2.2 Store Tests (unit)
 
@@ -37,9 +37,9 @@
 
 | Test | Invariant | Risk Protected |
 |------|-----------|----------------|
-| updateSlide only mutates target variant | INV-003 | Cross-variant leakage |
-| updateSlide on variant A doesn't touch B | INV-003 (anti) | Silent corruption |
-| selectVariant rejects invalid ID | — | Invalid state |
+| updateSlide only mutates target finalist | INV-003 | Cross-finalist leakage |
+| updateSlide on finalist A doesn't touch B | INV-003 (anti) | Silent corruption |
+| selectFinalist rejects invalid ID | — | Invalid state |
 | setStep follows state machine | INV-010 | Invalid transition |
 | user-edited content tracked via origin | INV-005 | Lost edits |
 
@@ -68,9 +68,9 @@
 
 | Test | Rule | Risk Protected |
 |------|------|----------------|
-| useGenerate calls AI for all 3 variants | RULE-G01 | Missing variants |
-| useGenerate uses fallback on AI failure | RULE-G06 | Blocked generation |
-| useGenerate reports progress correctly | RULE-G05 | Stuck progress UI |
+| generation pipeline produces candidate pool | RULE-G01 | no curation basis |
+| generation pipeline uses fallback on AI failure | RULE-G06 | Blocked generation |
+| generation pipeline reports progress correctly | RULE-G05 | Stuck progress UI |
 | usePreview debounces at 300ms | — | Server flood |
 | usePreview aborts previous request | — | Stale preview |
 | useExport prevents double-fire | — | Duplicate downloads |
@@ -81,16 +81,16 @@
 **Where**: `src/components/*/*.test.tsx`
 **Mock**: API calls, store if needed
 **Framework**: @testing-library/react
-**Maps to**: RULE-R*, RULE-CH*
+**Maps to**: RULE-P*, RULE-E*
 
 | Test | Rule | Risk Protected |
 |------|------|----------------|
 | CreateForm disables button when name empty | RULE-C05 | Premature generation |
 | CreateForm enables button when valid | RULE-C05 (anti) | Stuck user |
-| VariantGallery renders 3 strips | RULE-CH01 | Missing variants |
-| SlideCardsRow renders N cards | RULE-R01 | Wrong slide count |
-| Inspector shows correct slide on click | RULE-R03 | Wrong slide edited |
-| Preview button hides inspector | RULE-R04 | Broken preview mode |
+| Preview surface renders ranked finalists | RULE-P02 | raw outputs leaked |
+| selected finalist drives main preview | RULE-P01 | confusing comparison |
+| Inspector shows correct slide on click | RULE-E04 | Wrong slide edited |
+| edit mode stays in same surface | RULE-P04 | broken unified flow |
 
 ### 2.6 Integration Tests (flow)
 
@@ -102,10 +102,10 @@
 | Test | Flow | Risk Protected |
 |------|------|----------------|
 | create → upload → store has files | Create → Generate | Broken upload pipeline |
-| generate → 3 variants in store | Generate → Choose | Missing variants |
-| choose variant → refine loads | Choose → Refine | Navigation broken |
-| refine edit → store updated | Refine | Lost edits |
-| full flow: create → generate → choose → export | E2E | Acceptance criterion |
+| generate → finalist set in store | Generate → Preview | Missing curation |
+| preview finalist select → edit mode loads | Preview | Navigation broken |
+| preview edit → store updated | Preview edit | Lost edits |
+| full flow: create → generate → preview → export | E2E | Acceptance criterion |
 
 ### 2.7 Fidelity Tests (visual)
 
@@ -118,6 +118,7 @@
 |------|-----------|----------------|
 | preview and export use same composeSlide() | INV-004 | Render divergence |
 | preview config matches export config (except resize) | INV-007 | WYSIWYG violation |
+| finalists clear premium visual acceptance checks | RULE-Q01 | weak outputs surfaced |
 
 ## 3. Anti-Test Protocol
 

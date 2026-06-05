@@ -10,10 +10,10 @@ interface NavBarProps {
 const STEPS: { key: FlowStep; label: string }[] = [
   { key: "create", label: "Create" },
   { key: "generate", label: "Generate" },
-  { key: "choose", label: "Preview" },
+  { key: "preview", label: "Preview" },
 ];
 
-const STEP_ORDER: Record<FlowStep, number> = { create: 0, generate: 1, choose: 2, refine: 3 };
+const STEP_ORDER: Record<FlowStep, number> = { create: 0, generate: 1, preview: 2 };
 
 export function NavBar({ currentStep, rightContent }: NavBarProps) {
   const currentIdx = STEP_ORDER[currentStep];

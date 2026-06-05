@@ -2,12 +2,14 @@
 
 import { useState, useCallback } from "react";
 import type { SlideConfig } from "@appforge/screenshot-gen";
-import type { Variant, VariantId } from "@/domain/types";
+import type { Finalist, Variant, VariantId } from "@/domain/types";
 import { SlideCard } from "@/components/choose/slide-card";
 import { InlineEditor } from "./inline-editor";
 
 
 interface PreviewSurfaceProps {
+  finalists: Finalist[];
+  activeFinalist: Finalist | null;
   variants: Record<VariantId, Variant>;
   brandColor: string;
   activeVariantId: VariantId;
@@ -22,11 +24,31 @@ interface PreviewSurfaceProps {
   onSelect: (id: VariantId) => void;
 }
 
-const VARIANT_ORDER: VariantId[] = ["midnight", "clean", "vivid"];
-const V: Record<VariantId, { label: string; headline: string; desc: string; why: string; traits: string[] }> = {
-  midnight: { label: "Dark", headline: "Midnight", desc: "Cinematic depth that makes your app feel premium.", why: "Dark interfaces signal quality. Used by Linear, Arc, and top developer tools.", traits: ["Deep gradients with purple undertones", "High-contrast white typography", "Brand glow for cinematic depth"] },
-  clean: { label: "Light", headline: "Clean", desc: "Apple-editorial clarity. Minimal and universally appealing.", why: "Light minimal designs are the standard for utility and productivity apps.", traits: ["Soft off-white backgrounds", "Precise dark typography", "Frameless, content-forward devices"] },
-  vivid: { label: "Bold", headline: "Vivid", desc: "Your brand color takes center stage. Energetic and memorable.", why: "Brand-forward screenshots increase recognition in search results.", traits: ["Brand-saturated gradient backgrounds", "Dynamic device angles", "Strong glow for visual energy"] },
+const FINALIST_COPY: Record<
+  Finalist["thesis"],
+  { label: string; headline: string; desc: string; why: string; traits: string[] }
+> = {
+  "clarity-first": {
+    label: "Clarity",
+    headline: "Clarity First",
+    desc: "Editorial clarity with immediate comprehension and premium restraint.",
+    why: "Best when the product needs to feel obvious, trustworthy, and instantly understandable.",
+    traits: ["Stronger hierarchy and clean framing", "Higher readability at first glance", "Utility-first premium feel"],
+  },
+  "brand-signature-first": {
+    label: "Signature",
+    headline: "Brand Signature",
+    desc: "A more atmospheric direction that pushes perceived craft and identity.",
+    why: "Best when the product needs to feel elevated, intentional, and top-tier.",
+    traits: ["More cinematic depth and contrast", "Brand-forward framing choices", "Premium product energy without noise"],
+  },
+  "campaign-first": {
+    label: "Campaign",
+    headline: "Campaign Energy",
+    desc: "A more expressive direction with stronger memorability and visual punch.",
+    why: "Best when differentiation, recall, and shelf impact matter most.",
+    traits: ["Bolder composition and motion cues", "Higher distinction in search results", "More memorable story rhythm"],
+  },
 };
 
 const CTA_H = 52;
@@ -34,6 +56,7 @@ const NAV_H = 36;
 const EDITOR_W = 264;
 
 export function PreviewSurface({
+  finalists, activeFinalist,
   variants, brandColor, activeVariantId, activeVariant,
   previewCache, previewLoading, isExporting,
   onVariantChange, onSlideChange, onColorChange, onExport, onSelect,
@@ -41,9 +64,7 @@ export function PreviewSurface({
   const [editing, setEditing] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
   const [hovered, setHovered] = useState<number | null>(null);
-  const [btnPressed, setBtnPressed] = useState(false);
-
-  const c = V[activeVariantId];
+  const c = activeFinalist ? FINALIST_COPY[activeFinalist.thesis] : FINALIST_COPY["clarity-first"];
   const slide = activeVariant.slides[activeSlide] ?? null;
   const heroIdx = editing ? activeSlide : 0;
   const dimming = hovered !== null && !editing;
@@ -74,12 +95,13 @@ export function PreviewSurface({
           border: "1px solid rgba(255,255,255,0.04)",
           boxShadow: "0 1px 3px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.02)",
         }}>
-          {VARIANT_ORDER.map((id) => {
-            const isActive = id === activeVariantId;
+          {finalists.map((finalist) => {
+            const finalistVariantId = finalist.id.replace(/^seed-/, "") as VariantId;
+            const isActive = finalist.id === activeFinalist?.id;
             return (
               <button
-                key={id}
-                onClick={() => { onVariantChange(id); setActiveSlide(0); }}
+                key={finalist.id}
+                onClick={() => { onVariantChange(finalistVariantId); setActiveSlide(0); }}
                 style={{
                   padding: "5px 18px", borderRadius: 7, fontSize: 11,
                   fontWeight: isActive ? 700 : 500,
@@ -89,7 +111,10 @@ export function PreviewSurface({
                   transition: "all 0.28s var(--ease-out)",
                   letterSpacing: isActive ? -0.1 : 0,
                 }}
-              >{V[id].label}</button>
+              >
+                {finalist.rank <= 3 ? `#${finalist.rank} ` : ""}
+                {FINALIST_COPY[finalist.thesis].label}
+              </button>
             );
           })}
         </div>

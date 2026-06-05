@@ -20,22 +20,26 @@ export interface AIRunResult {
     crop: string | null;
   }>;
   error?: string;
+  /** AI-applied visual overrides per slide */
+  aiOverrides?: Array<{
+    index: number;
+    zoom: number;
+    deviceOffsetX: number;
+    deviceScale: number;
+  }>;
 }
 
 interface AIDebugPanelProps {
   result: AIRunResult | null;
-  aiEnabled: boolean;
-  onToggle: (enabled: boolean) => void;
-  onRunExperiment?: () => void;
 }
 
-export function AIDebugPanel({ result, aiEnabled, onToggle, onRunExperiment }: AIDebugPanelProps) {
+export function AIDebugPanel({ result }: AIDebugPanelProps) {
   const [expanded, setExpanded] = useState(false);
 
   // Only show in development
   if (process.env.NODE_ENV !== "development") return null;
 
-  const status = result?.status ?? (aiEnabled ? "off" : "off");
+  const status = result?.status ?? "off";
   const statusColor = {
     off: "#52525b",
     running: "#f59e0b",
@@ -49,7 +53,7 @@ export function AIDebugPanel({ result, aiEnabled, onToggle, onRunExperiment }: A
       position: "fixed", bottom: 16, right: 16, zIndex: 9999,
       fontFamily: "'SF Mono', monospace", fontSize: 11,
     }}>
-      {/* Toggle button */}
+      {/* Toggle button — always shows AI as active */}
       <button
         onClick={() => setExpanded(!expanded)}
         style={{
@@ -63,7 +67,7 @@ export function AIDebugPanel({ result, aiEnabled, onToggle, onRunExperiment }: A
         }}
       >
         <span style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor }} />
-        AI Director {aiEnabled ? "ON" : "OFF"}
+        AI Director {status === "off" ? "READY" : status.toUpperCase()}
         <span style={{ color: "#3f3f46" }}>{expanded ? "▼" : "▲"}</span>
       </button>
 
@@ -81,27 +85,12 @@ export function AIDebugPanel({ result, aiEnabled, onToggle, onRunExperiment }: A
             AI Visual Director
           </h3>
 
-          {/* Status + Toggle */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor }} />
-              <span style={{ fontWeight: 600 }}>{status.toUpperCase()}</span>
-              {result?.fallbackUsed && <span style={{ color: "#f59e0b", fontSize: 9 }}>(fallback)</span>}
-            </div>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-              <input type="checkbox" checked={aiEnabled} onChange={(e) => onToggle(e.target.checked)}
-                style={{ accentColor: "#6366f1" }} />
-              <span style={{ fontSize: 10 }}>Enable AI</span>
-            </label>
+          {/* Status */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor }} />
+            <span style={{ fontWeight: 600 }}>{status === "off" ? "ALWAYS ON" : status.toUpperCase()}</span>
+            {result?.fallbackUsed && <span style={{ color: "#f59e0b", fontSize: 9 }}>(fallback)</span>}
           </div>
-
-          {!aiEnabled && (
-            <div style={{ padding: "10px 12px", background: "rgba(255,255,255,0.03)", borderRadius: 8, marginBottom: 12, fontSize: 10, lineHeight: 1.5 }}>
-              {process.env.NEXT_PUBLIC_OPENAI_AVAILABLE === "true"
-                ? "AI Visual Director available. Toggle to enable."
-                : "No OPENAI_API_KEY detected. Add to .env.local and restart."}
-            </div>
-          )}
 
           {/* Timings */}
           {result?.timings?.total && (
@@ -113,6 +102,28 @@ export function AIDebugPanel({ result, aiEnabled, onToggle, onRunExperiment }: A
                 {result.timings.slidePlanGeneration != null && <Stat label="Slide plan" value={`${result.timings.slidePlanGeneration}ms`} />}
                 <Stat label="Total" value={`${result.timings.total}ms`} highlight />
               </div>
+            </div>
+          )}
+
+          {/* AI Visual Overrides — lightweight indicator per slide */}
+          {result?.aiOverrides && result.aiOverrides.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#52525b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
+                AI Overrides ({result.aiOverrides.length} slides)
+              </div>
+              {result.aiOverrides.map((o) => (
+                <div key={o.index} style={{
+                  padding: "6px 10px", marginBottom: 3,
+                  background: "rgba(99,102,241,0.06)", borderRadius: 6,
+                  display: "flex", gap: 12, fontSize: 10,
+                  borderLeft: `2px solid ${Math.abs(o.deviceOffsetX) > 5 || o.zoom > 1.3 ? "#6366f1" : "#3f3f46"}`,
+                }}>
+                  <span style={{ color: "#52525b", minWidth: 48 }}>Slide {o.index + 1}</span>
+                  <span>zoom: <b style={{ color: o.zoom > 1.3 ? "#22c55e" : "#a1a1aa" }}>{o.zoom.toFixed(1)}</b></span>
+                  <span>offset: <b style={{ color: Math.abs(o.deviceOffsetX) > 5 ? "#6366f1" : "#a1a1aa" }}>{o.deviceOffsetX}</b></span>
+                  <span>scale: <b style={{ color: Math.abs(o.deviceScale - 1) > 0.05 ? "#f59e0b" : "#a1a1aa" }}>{o.deviceScale.toFixed(2)}</b></span>
+                </div>
+              ))}
             </div>
           )}
 
@@ -152,21 +163,6 @@ export function AIDebugPanel({ result, aiEnabled, onToggle, onRunExperiment }: A
             <div style={{ padding: "8px 10px", background: "rgba(239,68,68,0.08)", borderRadius: 6, marginBottom: 12, fontSize: 10, color: "#ef4444" }}>
               {result.error}
             </div>
-          )}
-
-          {/* Run experiment button */}
-          {onRunExperiment && (
-            <button
-              onClick={onRunExperiment}
-              style={{
-                width: "100%", height: 32, borderRadius: 7,
-                background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-                color: "#fff", fontSize: 11, fontWeight: 700,
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              }}
-            >
-              Run AI Experiment
-            </button>
           )}
         </div>
       )}

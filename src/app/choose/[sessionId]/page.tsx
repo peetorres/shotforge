@@ -1,141 +1,105 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import type { SlideConfig } from "@appforge/screenshot-gen";
+import { useShotforgeStore } from "@/app-state/store";
 import { NavBar } from "@/components/shared/nav-bar";
 import { PreviewSurface } from "@/components/preview/preview-surface";
 import { usePreviewCache } from "@/hooks/use-preview-cache";
 import { useExport } from "@/hooks/use-export";
-import type { ProjectState, VariantId } from "@/domain/types";
-import { AIDebugPanel, type AIRunResult } from "@/components/preview/ai-debug-panel";
+import type { Finalist, VariantId } from "@/domain/types";
+import { AIDebugPanel } from "@/components/preview/ai-debug-panel";
 
 export default function PreviewPage() {
   const router = useRouter();
   const { sessionId } = useParams<{ sessionId: string }>();
-  const [project, setProject] = useState<ProjectState | null>(null);
-  const [activeVariantId, setActiveVariantId] = useState<VariantId>("midnight");
-  const [isExporting, setIsExporting] = useState(false);
-  const [aiResult, setAiResult] = useState<AIRunResult | null>(null);
-  const [aiEnabled, setAiEnabled] = useState(true);
+  const project = useShotforgeStore((state) => state.project);
+  const updateProject = useShotforgeStore((state) => state.updateProject);
+  const selectVariant = useShotforgeStore((state) => state.selectVariant);
+  const updateSlide = useShotforgeStore((state) => state.updateSlide);
+  const isExporting = useShotforgeStore((state) => state.isExporting);
+  const setIsExporting = useShotforgeStore((state) => state.setIsExporting);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("shotforge-v2");
-      if (!raw) { router.replace("/"); return; }
-      const parsed = JSON.parse(raw);
-      const p = parsed?.state?.project as ProjectState | undefined;
-      if (!p || p.sessionId !== sessionId) { router.replace("/"); return; }
-      setProject(p);
-      if (p.selectedVariantId) setActiveVariantId(p.selectedVariantId);
-    } catch { router.replace("/"); }
-  }, [sessionId, router]);
+    if (!project) {
+      router.replace("/");
+      return;
+    }
 
+    if (project.sessionId !== sessionId) {
+      router.replace("/");
+    }
+  }, [project, sessionId, router]);
+
+  const surfacedFinalists: Finalist[] = project?.finalists
+    ? [...project.finalists.top3, ...project.finalists.additional]
+    : [];
+  const activeFinalist = surfacedFinalists.find(
+    (finalist) => finalist.id === project?.selectedFinalistId,
+  ) ?? surfacedFinalists[0] ?? null;
+  const activeVariantId = (activeFinalist?.id.replace(/^seed-/, "") as VariantId | undefined)
+    ?? project?.selectedVariantId
+    ?? "midnight";
   const activeVariant = project?.variants[activeVariantId] ?? null;
+  const activeRenderable = useMemo(() => {
+    if (!activeVariant) {
+      return null;
+    }
+
+    if (!activeFinalist) {
+      return activeVariant;
+    }
+
+    return {
+      ...activeVariant,
+      slides: activeFinalist.slides,
+    };
+  }, [activeFinalist, activeVariant]);
 
   const { cache: previewCache, loading: previewLoading } = usePreviewCache({
     sessionId: project?.sessionId ?? null,
-    slides: activeVariant?.slides ?? [],
+    slides: activeRenderable?.slides ?? [],
     brand: project?.brand ?? "",
     brandColor: project?.brandColor ?? "",
-    style: activeVariant?.style ?? "dark",
+    style: activeRenderable?.style ?? "dark",
   });
 
   const { exportZip } = useExport({
     sessionId: project?.sessionId ?? null,
     brand: project?.brand ?? "",
     brandColor: project?.brandColor ?? "",
-    variant: activeVariant,
+    variant: activeRenderable,
     uploadedFiles: project?.uploadedFiles ?? [],
     isExporting,
     setIsExporting,
   });
 
-  const persist = useCallback((updated: ProjectState) => {
-    setProject(updated);
-    localStorage.setItem("shotforge-v2", JSON.stringify({ state: { project: updated }, version: 1 }));
-  }, []);
-
   const handleSlideChange = useCallback((slideIndex: number, patch: Partial<SlideConfig>) => {
     if (!project || !activeVariant) return;
-    const newSlides = [...activeVariant.slides];
-    newSlides[slideIndex] = { ...newSlides[slideIndex], ...patch } as SlideConfig;
-    persist({
-      ...project,
-      variants: { ...project.variants, [activeVariantId]: { ...activeVariant, slides: newSlides } },
-      updatedAt: new Date().toISOString(),
-    });
-  }, [project, activeVariant, activeVariantId, persist]);
+    updateSlide(activeVariantId, slideIndex, patch);
+  }, [project, activeVariant, activeVariantId, updateSlide]);
 
   const handleColorChange = useCallback((color: string) => {
     if (!project) return;
-    persist({ ...project, brandColor: color, updatedAt: new Date().toISOString() });
-  }, [project, persist]);
+    updateProject({ brandColor: color });
+  }, [project, updateProject]);
 
   const handleSelect = useCallback((id: VariantId) => {
     if (!project) return;
-    setActiveVariantId(id);
-    persist({ ...project, selectedVariantId: id, updatedAt: new Date().toISOString() });
-  }, [project, persist]);
-
-  // AI experiment runner
-  const runAIExperiment = useCallback(async () => {
-    if (!project) return;
-    setAiResult({ status: "running", timings: {}, slideCount: 0, fallbackUsed: false, comparisons: [] });
-    try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: project.sessionId,
-          brand: project.brand,
-          description: project.description,
-          filenames: project.uploadedFiles,
-          variantStyle: activeVariantId === "midnight" ? "dark" : activeVariantId === "clean" ? "light" : "bold",
-          riskLevel: "bold",
-        }),
-      });
-      const data = await res.json();
-
-      // Build comparisons
-      const comparisons = (activeVariant?.slides ?? []).map((slide, i) => {
-        const detHeadline = "headline" in slide
-          ? (slide as { headline: string[] }).headline.join(" ")
-          : (slide as { tagline?: string[] }).tagline?.join(" ") ?? slide.type;
-        const aiSlide = data.slidePlans?.[i];
-        return {
-          index: i,
-          deterministic: detHeadline,
-          ai: aiSlide?.headline ?? null,
-          role: aiSlide?.slide_role ?? null,
-          crop: aiSlide?.crop_strategy ?? null,
-        };
-      });
-
-      setAiResult({
-        status: data.aiUsed ? "success" : "fallback",
-        timings: data.timings ?? {},
-        slideCount: data.slidePlans?.length ?? 0,
-        fallbackUsed: !data.aiUsed,
-        comparisons,
-        error: data.aiUsed ? undefined : "AI not available — using deterministic",
-      });
-    } catch (e) {
-      setAiResult({
-        status: "failed",
-        timings: {},
-        slideCount: 0,
-        fallbackUsed: true,
-        comparisons: [],
-        error: e instanceof Error ? e.message : "Unknown error",
-      });
+    selectVariant(id);
+    const finalistId = project.finalists
+      ? [...project.finalists.top3, ...project.finalists.additional].find((finalist) => finalist.id === `seed-${id}`)?.id
+      : null;
+    if (finalistId) {
+      updateProject({ selectedFinalistId: finalistId });
     }
-  }, [project, activeVariant, activeVariantId]);
+  }, [project, selectVariant, updateProject]);
 
-  if (!project || !activeVariant) {
+  if (!project || !activeVariant || !activeRenderable) {
     return (
       <>
-        <NavBar currentStep="choose" />
+        <NavBar currentStep="preview" />
         <div style={{ minHeight: "100vh", paddingTop: 48, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-3)", fontSize: 14 }}>Loading...</div>
       </>
     );
@@ -143,13 +107,15 @@ export default function PreviewPage() {
 
   return (
     <>
-      <NavBar currentStep="choose" />
+      <NavBar currentStep="preview" />
       <main style={{ height: "100vh", paddingTop: 48, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <PreviewSurface
+          finalists={surfacedFinalists}
+          activeFinalist={activeFinalist}
           variants={project.variants}
           brandColor={project.brandColor}
           activeVariantId={activeVariantId}
-          activeVariant={activeVariant}
+          activeVariant={activeRenderable}
           previewCache={previewCache}
           previewLoading={previewLoading}
           isExporting={isExporting}
@@ -160,12 +126,7 @@ export default function PreviewPage() {
           onSelect={handleSelect}
         />
       </main>
-      <AIDebugPanel
-        result={aiResult}
-        aiEnabled={aiEnabled}
-        onToggle={setAiEnabled}
-        onRunExperiment={runAIExperiment}
-      />
+      <AIDebugPanel result={null} />
     </>
   );
 }

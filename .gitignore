@@ -2,3 +2,14 @@
 .env*.local
 .next/
 node_modules/
+
+# Runtime junk
+.claude-flow/
+.swarm/
+.agents/
+.codex/
+docs/superpowers/
+ruvector.db
+*.db
+*.tsbuildinfo
+.DS_Store

@@ -49,6 +49,18 @@ export interface CreativeDirectorOutput {
   slides: SlidePlan[];
 }
 
+export interface AiScreenshotAnalysis {
+  screenshotIndex: number;
+  screenshotType: string;
+  focalElements: string[];
+  proofSignals: string[];
+  emotionSignals: string[];
+  cropOpportunities: string[];
+  safeTextRegion: "left" | "right" | "top";
+  compositionDensity: number;
+  hierarchySignal: number;
+}
+
 // Backward compat
 export interface ProductUnderstanding {
   category: string;
@@ -142,5 +154,42 @@ export const CREATIVE_DIRECTOR_SCHEMA = {
     },
   },
   required: ["slides"] as const,
+  additionalProperties: false,
+};
+
+export const SCREENSHOT_ANALYSIS_SCHEMA = {
+  type: "object" as const,
+  properties: {
+    screenshots: {
+      type: "array" as const,
+      items: {
+        type: "object" as const,
+        properties: {
+          screenshotIndex: { type: "number" as const },
+          screenshotType: { type: "string" as const },
+          focalElements: { type: "array" as const, items: { type: "string" as const } },
+          proofSignals: { type: "array" as const, items: { type: "string" as const } },
+          emotionSignals: { type: "array" as const, items: { type: "string" as const } },
+          cropOpportunities: { type: "array" as const, items: { type: "string" as const } },
+          safeTextRegion: { type: "string" as const, enum: ["left", "right", "top"] },
+          compositionDensity: { type: "number" as const },
+          hierarchySignal: { type: "number" as const },
+        },
+        required: [
+          "screenshotIndex",
+          "screenshotType",
+          "focalElements",
+          "proofSignals",
+          "emotionSignals",
+          "cropOpportunities",
+          "safeTextRegion",
+          "compositionDensity",
+          "hierarchySignal",
+        ] as const,
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["screenshots"] as const,
   additionalProperties: false,
 };

@@ -10,6 +10,10 @@ import { createShotforgeStore } from "./store";
 import { createVariants } from "@/domain/variant";
 import type { ProjectState, VariantId } from "@/domain/types";
 
+beforeEach(() => {
+  localStorage.clear();
+});
+
 function makeProject(): ProjectState {
   const variants = createVariants(
     ["screen1.png", "screen2.png", "screen3.png"],
@@ -24,6 +28,8 @@ function makeProject(): ProjectState {
     uploadedFiles: ["screen1.png", "screen2.png", "screen3.png"],
     variants,
     selectedVariantId: null,
+    finalists: null,
+    selectedFinalistId: null,
     step: "create",
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
@@ -126,25 +132,17 @@ describe("Store: step transitions (INV-010)", () => {
     expect(store.getState().project!.step).toBe("generate");
   });
 
-  it("allows generate → choose", () => {
+  it("allows generate → preview", () => {
     store.getState().setStep("generate");
-    store.getState().setStep("choose");
-    expect(store.getState().project!.step).toBe("choose");
+    store.getState().setStep("preview");
+    expect(store.getState().project!.step).toBe("preview");
   });
 
-  it("allows choose → refine", () => {
+  it("allows backward navigation: preview → generate", () => {
     store.getState().setStep("generate");
-    store.getState().setStep("choose");
-    store.getState().setStep("refine");
-    expect(store.getState().project!.step).toBe("refine");
-  });
-
-  it("allows backward navigation: refine → choose", () => {
+    store.getState().setStep("preview");
     store.getState().setStep("generate");
-    store.getState().setStep("choose");
-    store.getState().setStep("refine");
-    store.getState().setStep("choose");
-    expect(store.getState().project!.step).toBe("choose");
+    expect(store.getState().project!.step).toBe("generate");
   });
 });
 

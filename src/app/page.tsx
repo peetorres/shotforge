@@ -57,7 +57,7 @@ export default function CreatePage() {
     setFiles((p) => [...p, ...nf].slice(0, 6));
   }, [files.length, uploadActive]);
 
-  async function handleSubmit() {
+  async function handleSubmit(engine: "standard" | "gemini" = "standard") {
     if (!canSubmit) return;
     setIsSubmitting(true); setError(null);
     const sessionId = nanoid();
@@ -68,7 +68,7 @@ export default function CreatePage() {
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       const result = await res.json();
       if (!res.ok) { setError(result.filename ? `${result.error}: ${result.filename}` : (result.detail ?? result.error ?? "Upload failed")); setIsSubmitting(false); return; }
-      localStorage.setItem("shotforge-pending", JSON.stringify({ sessionId, brand: brand.trim(), description: description.trim(), brandColor, filenames: result.filenames as string[] }));
+      localStorage.setItem("shotforge-pending", JSON.stringify({ sessionId, brand: brand.trim(), description: description.trim(), brandColor, filenames: result.filenames as string[], engine }));
       router.push(`/generate/${sessionId}`);
     } catch { setError("Upload failed. Please try again."); setIsSubmitting(false); }
   }
@@ -263,7 +263,7 @@ export default function CreatePage() {
           {/* 5. CTA */}
           {error && <p style={{ color: "#ef4444", fontSize: 11, marginBottom: 6 }}>{error}</p>}
           <button
-            onClick={handleSubmit} disabled={!canSubmit}
+            onClick={() => handleSubmit("standard")} disabled={!canSubmit}
             style={{
               width: "100%", height: 44, borderRadius: 12,
               fontSize: 14, fontWeight: 700,
@@ -284,7 +284,32 @@ export default function CreatePage() {
             onMouseDown={(e) => { if (canSubmit) { e.currentTarget.style.transform = `scale(${t.pressScale})`; e.currentTarget.style.transition = `all 0.1s ${t.easeDefault}`; } }}
             onMouseUp={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.transition = `all ${t.durationNormal} ${t.easeSpring}`; }}
           >
-            {isSubmitting ? "Uploading..." : "Generate screenshots →"}
+            {isSubmitting ? "Uploading..." : "Generate →"}
+          </button>
+
+
+          {/* Gemini AI button */}
+          <button
+            onClick={() => handleSubmit("gemini")}
+            disabled={!canSubmit || isSubmitting}
+            style={{
+              width: "100%", height: 40, borderRadius: 12,
+              fontSize: 13, fontWeight: 700,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+              background: canSubmit
+                ? "rgba(139,92,246,0.08)"
+                : "transparent",
+              color: canSubmit ? "#a78bfa" : "#3f3f46",
+              cursor: canSubmit ? "pointer" : "not-allowed",
+              border: canSubmit ? "1px solid rgba(139,92,246,0.18)" : "1px solid rgba(139,92,246,0.05)",
+              transition: `all ${t.durationNormal} ${t.easeDefault}`,
+              marginTop: 6,
+            }}
+            onMouseEnter={(e) => { if (canSubmit) { e.currentTarget.style.background = "rgba(139,92,246,0.14)"; e.currentTarget.style.borderColor = "rgba(139,92,246,0.28)"; } }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = canSubmit ? "rgba(139,92,246,0.08)" : "transparent"; e.currentTarget.style.borderColor = canSubmit ? "rgba(139,92,246,0.18)" : "rgba(139,92,246,0.05)"; }}
+          >
+            <span style={{ fontSize: 11 }}>✦</span>
+            {isSubmitting ? "Uploading..." : "Generate with AI"}
           </button>
 
           {/* Microcopy — Lumo voice */}

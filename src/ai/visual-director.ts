@@ -12,8 +12,13 @@
  * - Pre-render self-evaluation scores
  */
 
-import type { SlidePlan, ProductUnderstanding, ScreenshotIntent } from "./schemas";
-import { CREATIVE_DIRECTOR_SCHEMA } from "./schemas";
+import type {
+  AiScreenshotAnalysis,
+  SlidePlan,
+  ProductUnderstanding,
+  ScreenshotIntent,
+} from "./schemas";
+import { CREATIVE_DIRECTOR_SCHEMA, SCREENSHOT_ANALYSIS_SCHEMA } from "./schemas";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const MODEL = "gpt-4o";
@@ -122,6 +127,68 @@ export async function analyzeProduct(
 
 export async function analyzeScreenshot(): Promise<ScreenshotIntent | null> {
   return null;
+}
+
+export async function analyzeScreenshots(
+  appName: string,
+  description: string,
+  screenshotBase64s: string[],
+): Promise<AiScreenshotAnalysis[] | null> {
+  if (!OPENAI_API_KEY || screenshotBase64s.length === 0) return null;
+
+  const content: Array<{ type: string; text?: string; image_url?: { url: string; detail: string } }> = [
+    {
+      type: "text",
+      text:
+        `Analyze these app screenshots independently for creative planning.\n` +
+        `App: ${appName}\nDescription: ${description}\n\n` +
+        `Rules:\n` +
+        `- Ignore file names and upload order as semantic signals.\n` +
+        `- Use only what is visually present in each image.\n` +
+        `- Detect whether each screenshot is better for hook, mechanism, detail, proof, or payoff moments.\n` +
+        `- Return one analysis per screenshot using screenshotIndex to identify it.\n` +
+        `- Focus on focal UI elements, proof signals, emotional signals, crop opportunities, safe text side, density, and hierarchy.\n`,
+    },
+    ...screenshotBase64s.map((base64) => ({
+      type: "image_url",
+      image_url: { url: `data:image/png;base64,${base64}`, detail: "low" },
+    })),
+  ];
+
+  try {
+    const res = await fetchTimeout("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${OPENAI_API_KEY}` },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a multimodal creative strategist. Read each screenshot visually. Do not infer semantics from file names or order. Be concrete and precise.",
+          },
+          { role: "user", content },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: "screenshot_analysis", strict: true, schema: SCREENSHOT_ANALYSIS_SCHEMA },
+        },
+        max_tokens: 2200,
+      }),
+    }, TIMEOUT);
+
+    if (!res.ok) {
+      console.warn("[creative-director:screenshots] API:", res.status);
+      return null;
+    }
+
+    const data = await res.json();
+    const parsed = JSON.parse(data.choices?.[0]?.message?.content ?? "null");
+    return parsed?.screenshots ?? null;
+  } catch (e) {
+    console.warn("[creative-director:screenshots]", e instanceof Error ? e.message : e);
+    return null;
+  }
 }
 
 // ─── Creative Director: Full Slide Plan ─────────

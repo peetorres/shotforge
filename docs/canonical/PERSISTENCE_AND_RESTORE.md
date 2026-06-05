@@ -35,10 +35,9 @@ persist(storeCreator, {
 
 ### What IS persisted
 - Project metadata (brand, description, brandColor)
-- All 3 variants with all slides
-- Selected variant ID
-- Active slide index
-- Current step
+- Finalist set and selected finalist
+- Edit-mode state needed to resume Preview
+- Current visible step/state
 - Session ID
 
 ### What is NOT persisted
@@ -59,7 +58,7 @@ persist(storeCreator, {
    b. Does project.sessionId match URL parameter?
    c. Is schema version compatible?
    d. Are required fields present?
-   e. Do variants exist with correct structure?
+   e. Do finalists exist with valid structure if generation already completed?
 4. If valid → resume at stored step
 5. If invalid → clear localStorage, redirect to /create
 ```
@@ -113,9 +112,9 @@ If migration is not possible (too old or corrupted):
 ## 5. Edge Cases
 
 ### Browser Refresh During Generation
-- State: `step === "generating"`, `generationProgress > 0`
-- Behavior: Restore to `step === "uploaded"` (pre-generation)
-- Rationale: /tmp files exist but variants are incomplete
+- State: generation in progress
+- Behavior: restore to pre-curation generation state or resume Preview only if a valid finalist set already exists
+- Rationale: partially generated candidate sets must not be surfaced as user-visible truth
 - User sees: Create page with data pre-filled, "Generate" button ready
 
 ### Direct URL Access (Deep Link)
@@ -125,10 +124,10 @@ If migration is not possible (too old or corrupted):
 | /create | any | Show create form (pre-fill if session exists) |
 | /generate/[id] | matching | Resume generation |
 | /generate/[id] | missing/mismatch | Redirect to /create |
-| /choose/[id] | matching + generated | Show choose gallery |
-| /choose/[id] | missing or not generated | Redirect to /create |
-| /refine/[id] | matching + variant selected | Show refine editor |
-| /refine/[id] | missing or no variant | Redirect to /create |
+| /choose/[id] | matching + finalists exist | Compatibility entry to unified Preview |
+| /choose/[id] | missing or invalid | Redirect to /create |
+| /refine/[id] | matching + selected finalist exists | Compatibility entry to unified Preview edit mode |
+| /refine/[id] | missing or invalid | Redirect to /create |
 
 ### localStorage Full
 - Zustand persist silently fails
@@ -148,7 +147,7 @@ If migration is not possible (too old or corrupted):
 | Missing required fields | Schema validation | Clear + redirect |
 | Wrong schema version | version mismatch | Attempt migration, else clear |
 | /tmp files missing (server restart) | 404 on preview/export | Show "session expired" message, keep client state, offer re-upload |
-| Partial variant data | variant missing slides | Clear + redirect |
+| Partial finalist data | finalist set invalid or incomplete | Clear + redirect |
 
 ## 7. Data Integrity Checks
 
@@ -164,14 +163,16 @@ function validateSession(data: unknown): data is PersistedState {
   // Required fields
   if (typeof p.sessionId !== 'string') return false
   if (typeof p.brand !== 'string') return false
-  if (!p.variants || typeof p.variants !== 'object') return false
+  if (!p.finalists || typeof p.finalists !== 'object') return false
 
-  // Variant structure
-  const variants = p.variants as Record<string, unknown>
-  for (const id of ['midnight', 'clean', 'vivid']) {
-    const v = variants[id] as Record<string, unknown> | undefined
-    if (!v) return false
-    if (!Array.isArray(v.slides)) return false
+  // Finalist structure
+  const finalists = p.finalists as Record<string, unknown>
+  const top3 = finalists.top3 as unknown[] | undefined
+  if (!Array.isArray(top3)) return false
+  for (const finalist of top3) {
+    if (!finalist || typeof finalist !== 'object') return false
+    const f = finalist as Record<string, unknown>
+    if (!Array.isArray(f.slides)) return false
   }
 
   return true

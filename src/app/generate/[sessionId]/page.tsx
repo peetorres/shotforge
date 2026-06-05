@@ -2,12 +2,16 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { getShotforgeStore } from "@/app-state/store";
 import { NavBar } from "@/components/shared/nav-bar";
 import { ProgressScreen } from "@/components/generate/progress-screen";
 import { generateAllVariants } from "@/hooks/use-generate";
 import { createVariants } from "@/domain/variant";
 import type { SlideConfig } from "@appforge/screenshot-gen";
-import type { ProjectState, VariantId, GeneratedCopy } from "@/domain/types";
+import type { SlidePlan } from "@/ai/schemas";
+import type { ProjectState, ScreenshotAnalysis, VariantId, GeneratedCopy } from "@/domain/types";
+import { buildSeedFinalistSet } from "@/pipeline/curation/seed-finalists";
+import { applyAiSlidePlans } from "@/pipeline/ai/apply-slide-plans";
 
 interface PendingSession {
   sessionId: string;
@@ -15,6 +19,7 @@ interface PendingSession {
   description: string;
   brandColor: string;
   filenames: string[];
+  engine?: "standard" | "gemini";
 }
 
 export default function GeneratePage() {
@@ -47,6 +52,46 @@ export default function GeneratePage() {
       return;
     }
 
+    // ── Gemini engine branch ─────────────────────────────────────────────────
+    if (pending.engine === "gemini") {
+      runGeminiGeneration();
+      return;
+    }
+
+    async function runGeminiGeneration() {
+      try {
+        setProgress(10);
+        const res = await fetch("/api/generate-gemini", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: pending.sessionId,
+            filenames: pending.filenames,
+            brand: pending.brand,
+            description: pending.description,
+            brandColor: pending.brandColor,
+          }),
+        });
+        setProgress(90);
+        if (!res.ok) {
+          const err = await res.json() as { error?: string; detail?: string };
+          throw new Error(err.detail ?? err.error ?? "Generation failed");
+        }
+        const data = await res.json() as { images: unknown[]; brand: string; sessionId: string };
+        setProgress(100);
+        localStorage.setItem("shotforge-gemini-result", JSON.stringify({
+          sessionId: data.sessionId,
+          brand: data.brand,
+          images: data.images,
+        }));
+        localStorage.removeItem("shotforge-pending");
+        router.push(`/preview-gemini/${pending.sessionId}`);
+      } catch (e) {
+        console.error("[generate] gemini failed:", e);
+        setError("Generation failed. Please try again.");
+      }
+    }
+
     async function runGeneration() {
       const t0 = Date.now();
       const log = (msg: string) => console.log(`[gen ${Date.now() - t0}ms] ${msg}`);
@@ -59,7 +104,8 @@ export default function GeneratePage() {
         // ─── AI VISUAL DIRECTOR (feature flag) ──────
         // Only runs if AI_VISUAL_DIRECTOR flag detected
         // Scope: slide roles, crop strategy, headlines
-        let aiPlan: { slides: Array<Record<string, unknown>> } | null = null;
+        let aiPlan: { slides: SlidePlan[] } | null = null;
+        let aiScreenshotAnalyses: ScreenshotAnalysis[] | null = null;
 
         try {
           log("2.5. Checking AI Visual Director...");
@@ -79,6 +125,7 @@ export default function GeneratePage() {
             const aiData = await aiRes.json();
             if (aiData.aiUsed && aiData.slidePlans) {
               aiPlan = { slides: aiData.slidePlans };
+              aiScreenshotAnalyses = Array.isArray(aiData.screenshotAnalyses) ? aiData.screenshotAnalyses : null;
               log("2.6. AI Visual Director active — " + aiData.slidePlans.length + " slide plans received");
               log("2.7. AI timings: " + JSON.stringify(aiData.timings));
 
@@ -104,32 +151,14 @@ export default function GeneratePage() {
           log("2.6. AI Visual Director: failed (" + (aiErr instanceof Error ? aiErr.message : aiErr) + ") — using deterministic");
         }
 
-        // ─── Apply AI VISUAL ONLY (no headlines — deterministic copy is better) ────
+        // ─── Apply AI VISUAL DIRECTION (layout, crop, zoom, position, scale) ────
         if (aiPlan?.slides) {
-          log("2.8. Applying AI crop + zoom to all variants (headlines kept deterministic)");
+          log("2.8. Applying AI visual direction + layout types to all variants");
+          const applied = applyAiSlidePlans(variants, aiPlan.slides);
           for (const variantId of ["midnight", "clean", "vivid"] as VariantId[]) {
-            const slides = variants[variantId].slides.map((slide, i) => {
-              const aiSlide = aiPlan!.slides[i] as { composition?: { crop?: { zoom?: number; offsetX?: number; offsetY?: number; strategy?: string } }; headline?: string };
-              if (!aiSlide?.composition?.crop) return slide;
-
-              const crop = aiSlide.composition.crop;
-              // Only apply to slides with device screenshots
-              if (slide.type === "feature-single" || slide.type === "detail" || slide.type === "result") {
-                // Enforce minimum zoom 1.3 for visible difference
-                const zoom = Math.max(1.3, crop.zoom ?? 1.3);
-                const updated = {
-                  ...slide,
-                  zoom,
-                  offsetX: crop.offsetX ?? 0,
-                  offsetY: crop.offsetY ?? 0,
-                } as SlideConfig;
-                log(`  Slide ${i + 1} (${slide.type}): AI crop applied → zoom=${zoom} offset=${crop.offsetX ?? 0},${crop.offsetY ?? 0} strategy=${crop.strategy ?? "focus"}`);
-                return updated;
-              }
-              return slide;
-            });
-            variants[variantId] = { ...variants[variantId], slides };
+            variants[variantId] = applied.variants[variantId];
           }
+          log(`2.9. AI slide plans applied — ${applied.appliedCount} updates across ${applied.layoutsUsed.length} tracked layouts`);
         }
 
         log("3. Starting fallback copy generation (async, 3 variants × " + pending.filenames.length + " slides)");
@@ -171,6 +200,15 @@ export default function GeneratePage() {
         }
 
         log("7. Creating project state");
+        const finalists = buildSeedFinalistSet({
+          sessionId: pending.sessionId,
+          brand: pending.brand,
+          description: pending.description,
+          brandColor: pending.brandColor,
+          variants,
+          analysesOverride: aiScreenshotAnalyses ?? undefined,
+        });
+        const initialVariantId = (finalists.top3[0]?.id?.replace(/^seed-/, "") ?? "midnight") as VariantId;
         const project: ProjectState = {
           sessionId: pending.sessionId,
           brand: pending.brand,
@@ -178,14 +216,16 @@ export default function GeneratePage() {
           brandColor: pending.brandColor,
           uploadedFiles: pending.filenames,
           variants,
-          selectedVariantId: null,
-          step: "choose",
+          selectedVariantId: initialVariantId,
+          finalists,
+          selectedFinalistId: finalists.top3[0]?.id ?? null,
+          step: "preview",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
 
-        log("8. Persisting to localStorage");
-        localStorage.setItem("shotforge-v2", JSON.stringify({ state: { project }, version: 1 }));
+        log("8. Persisting to centralized store");
+        getShotforgeStore().getState().setProject(project);
         localStorage.removeItem("shotforge-pending");
 
         log("9. Navigating to /choose/" + pending.sessionId);

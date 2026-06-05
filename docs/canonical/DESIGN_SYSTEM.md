@@ -11,6 +11,8 @@
 | **Real-time feedback** | Every edit shows its effect immediately. |
 | **WYSIWYG** | Preview is truth. What you see is what you export. |
 | **Dark-first** | The app is dark. The screenshots may be light. Don't confuse the two. |
+| **Curated output** | Users should feel they are reviewing finalists, not raw attempts. |
+| **Premium with signature** | Finalists should feel top-tier and intentionally differentiated, not cosmetically varied. |
 
 ## 2. Foundations
 
@@ -147,18 +149,17 @@ Every interactive component must handle:
 └──────────────────────────────────────────────┘
 ```
 
-### 4.2 Refine Layout
+### 4.2 Preview / Edit Layout
 
 ```
 ┌──────────────────────────────────┬────────────┐
-│  Slide Cards Row                 │  Inspector  │
-│  (flex, center, responsive)      │  (272px)    │
-│  gap: 14px                       │  fixed      │
-│  padding: 16px 20px              │  scroll-y   │
+│  Ranked Preview Surface          │  Editor     │
+│  finalist comparison + selected  │  (272px)    │
+│  creative direction              │  inline     │
 └──────────────────────────────────┴────────────┘
 ```
 
-Preview mode: inspector width → 0px (animated), slides fill full width.
+Edit mode lives inside the same surface. It must not feel like a separate product.
 
 ### 4.3 Slide Card Sizing (Refine)
 
@@ -169,11 +170,12 @@ max-width: 200px;
 aspect-ratio: 1290 / 2796;
 ```
 
-### 4.4 Choose Gallery
+### 4.4 Finalist Presentation
 
-- Full-width page, vertical scroll
-- Each variant: header row + horizontal scroll strip
-- Strip cards: 170px wide, aspect-ratio: 1290/2796
+- Show Top 3 ranked finalists by default
+- Additional finalists only appear if they are competitive and useful
+- The selected finalist owns the main preview focus
+- Comparison and editing share one visual shell
 
 ## 5. Component Catalog
 
@@ -214,7 +216,65 @@ aspect-ratio: 1290 / 2796;
 - Shows: selected name + size badges + download button
 - Enters from bottom with slide-up animation
 
-## 6. Anti-Patterns (Never Do)
+## 6. AAA Visual Grammar
+
+These rules are derived from premium App Store references and must guide both AI direction and deterministic rendering.
+
+### 6.1 One thesis per slide
+
+- Every slide must communicate one primary idea
+- Headline, screenshot, and background must reinforce the same idea
+- Balanced "everything matters equally" compositions are rejected
+
+### 6.2 Hierarchy must be brutal
+
+- Headline must be instantly readable
+- Supporting text is optional and secondary
+- Device or screenshot content must have a clearly assigned role: hero, proof, detail, or context
+- If text and screenshot compete equally, the composition is wrong
+
+### 6.3 Backgrounds support the message
+
+- Backgrounds may be bold, atmospheric, minimal, or branded
+- Backgrounds must never become the main subject unless the thesis explicitly demands it
+- Backgrounds are built deterministically from brand and screenshot context
+
+### 6.4 Typography is directional
+
+- Headline typography carries mood and authority
+- Typography must come from a curated library
+- Tight tracking, strong weight, and short line lengths are preferred for premium impact
+- Weak generic typography degrades the product immediately
+
+### 6.5 Device role must be intentional
+
+- The device can be dominant, framed proof, close detail, or absent
+- Centering a device by default is not acceptable
+- Crop, zoom, and alignment must be justified by the screenshot's strongest visual information
+
+### 6.6 Sequencing matters
+
+- Finalists must feel like deliberate App Store stories, not independent cards
+- A strong sequence typically moves through hook, understanding, proof, utility, and close
+- The first slide must establish the thesis decisively
+
+### 6.7 Acceptable style families
+
+The engine should be able to express at least these premium families:
+
+- editorial dark
+- bright branded system
+- soft premium clarity
+- campaign social energy
+
+### 6.8 What to reject
+
+- generic gradient plus centered phone layouts
+- long headlines with weak hierarchy
+- decorative backgrounds with no relationship to the app
+- visual noise outside the focal message
+- finalists that differ only by color palette
+## 7. Anti-Patterns (Never Do)
 
 - Never use light backgrounds for the app UI (only for screenshot content)
 - Never use border-radius > 20px on cards (except device frame mock which uses 28-32px)

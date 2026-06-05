@@ -1,36 +1,34 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import type { SlideConfig } from "@appforge/screenshot-gen";
+import { useShotforgeStore } from "@/app-state/store";
 import { NavBar } from "@/components/shared/nav-bar";
 import { SlideCardsRow } from "@/components/refine/slide-cards-row";
 import { Inspector } from "@/components/refine/inspector";
 import { useExport } from "@/hooks/use-export";
 import { usePreviewCache } from "@/hooks/use-preview-cache";
-import type { ProjectState, VariantId } from "@/domain/types";
 
 export default function RefinePage() {
   const router = useRouter();
   const { sessionId } = useParams<{ sessionId: string }>();
-  const [project, setProject] = useState<ProjectState | null>(null);
-  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const [previewMode, setPreviewMode] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const project = useShotforgeStore((state) => state.project);
+  const activeSlideIndex = useShotforgeStore((state) => state.activeSlideIndex);
+  const previewMode = useShotforgeStore((state) => state.previewMode);
+  const isExporting = useShotforgeStore((state) => state.isExporting);
+  const setActiveSlideIndex = useShotforgeStore((state) => state.setActiveSlide);
+  const setPreviewMode = useShotforgeStore((state) => state.setPreviewMode);
+  const setIsExporting = useShotforgeStore((state) => state.setIsExporting);
+  const updateProject = useShotforgeStore((state) => state.updateProject);
+  const updateSlide = useShotforgeStore((state) => state.updateSlide);
 
-  // Restore from localStorage
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("shotforge-v2");
-      if (!raw) { router.replace("/"); return; }
-      const parsed = JSON.parse(raw);
-      const p = parsed?.state?.project as ProjectState | undefined;
-      if (!p || p.sessionId !== sessionId || !p.selectedVariantId) { router.replace("/"); return; }
-      setProject(p);
-    } catch {
+    if (!project || project.sessionId !== sessionId || !project.selectedVariantId) {
       router.replace("/");
+      return;
     }
-  }, [sessionId, router]);
+  }, [project, sessionId, router]);
 
   const selectedVariant = project?.selectedVariantId
     ? project.variants[project.selectedVariantId]
@@ -47,27 +45,10 @@ export default function RefinePage() {
     style: selectedVariant?.style ?? "dark",
   });
 
-  // Persist helper
-  const persist = useCallback((updated: ProjectState) => {
-    setProject(updated);
-    localStorage.setItem("shotforge-v2", JSON.stringify({ state: { project: updated }, version: 1 }));
-  }, []);
-
-  // RULE-R09: Title changes apply ONLY to selected slide (INV-003)
   const handleSlideChange = useCallback((patch: Partial<SlideConfig>) => {
     if (!project || !project.selectedVariantId || !selectedVariant) return;
-    const newSlides = [...selectedVariant.slides];
-    newSlides[activeSlideIndex] = { ...newSlides[activeSlideIndex], ...patch } as SlideConfig;
-    const updated: ProjectState = {
-      ...project,
-      variants: {
-        ...project.variants,
-        [project.selectedVariantId]: { ...selectedVariant, slides: newSlides },
-      },
-      updatedAt: new Date().toISOString(),
-    };
-    persist(updated);
-  }, [project, selectedVariant, activeSlideIndex, persist]);
+    updateSlide(project.selectedVariantId, activeSlideIndex, patch);
+  }, [project, selectedVariant, activeSlideIndex, updateSlide]);
 
   // RULE-R08: Background changes apply to all slides in variant
   const handleBackgroundChange = useCallback((_bgIndex: number) => {
@@ -75,16 +56,10 @@ export default function RefinePage() {
     // For now, this is wired but the visual change requires extending the variant model
   }, []);
 
-  // RULE-R10: Brand color changes apply to ALL variants (project-level)
   const handleColorChange = useCallback((color: string) => {
     if (!project) return;
-    const updated: ProjectState = {
-      ...project,
-      brandColor: color,
-      updatedAt: new Date().toISOString(),
-    };
-    persist(updated);
-  }, [project, persist]);
+    updateProject({ brandColor: color });
+  }, [project, updateProject]);
 
   const { exportZip } = useExport({
     sessionId: project?.sessionId ?? null,
@@ -101,17 +76,19 @@ export default function RefinePage() {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
       if (!selectedVariant) return;
-      if (e.key === "ArrowLeft") setActiveSlideIndex((i) => Math.max(0, i - 1));
-      if (e.key === "ArrowRight") setActiveSlideIndex((i) => Math.min(selectedVariant.slides.length - 1, i + 1));
+      if (e.key === "ArrowLeft") setActiveSlideIndex(Math.max(0, activeSlideIndex - 1));
+      if (e.key === "ArrowRight") {
+        setActiveSlideIndex(Math.min(selectedVariant.slides.length - 1, activeSlideIndex + 1));
+      }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedVariant]);
+  }, [selectedVariant, activeSlideIndex, setActiveSlideIndex]);
 
   if (!project || !selectedVariant) {
     return (
       <>
-        <NavBar currentStep="refine" />
+        <NavBar currentStep="preview" />
         <div style={{ minHeight: "100vh", paddingTop: 48, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-3)" }}>
           Loading...
         </div>
@@ -122,7 +99,7 @@ export default function RefinePage() {
   return (
     <>
       <NavBar
-        currentStep="refine"
+        currentStep="preview"
         rightContent={
           <>
             <button
@@ -132,7 +109,7 @@ export default function RefinePage() {
               ← Variants
             </button>
             <button
-              onClick={() => setPreviewMode((p) => !p)}
+              onClick={() => setPreviewMode(!previewMode)}
               style={{
                 height: 28, padding: "0 12px", borderRadius: "var(--r-sm)",
                 fontSize: 11, fontWeight: 600,
@@ -173,7 +150,7 @@ export default function RefinePage() {
           previewCache={previewCache}
           previewLoading={previewLoading}
           activeIndex={activeSlideIndex}
-          onSelect={setActiveSlideIndex}
+          onSelect={(index) => setActiveSlideIndex(index)}
         />
 
         {/* Inspector */}
